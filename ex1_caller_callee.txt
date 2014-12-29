@@ -1,0 +1,637 @@
+<?xml version= "1.0"?>
+<callInfo>
+<caller name=deregister_tm_clones begin=46,end=60 />
+<caller name=register_tm_clones begin=62,end=81 />
+<caller name=__do_global_dtors_aux begin=84,end=92>
+	<callee name=deregister_tm_clones address=08048420  begin=46, end=60 , call=89 , return=60>
+		<def block=89 line=3 Value="mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x80484a4:u32" >
+			<use block=50 line=2 Value="R_ESP_32:u32 = R_ESP_32:u32 + 4:u32" \>
+		</def>
+	</callee>
+</caller>
+</callInfo>
+
+
+Caller: deregister_tm_clones (46, 60)
+
+Caller: register_tm_clones (62, 81)
+
+
+Caller: __do_global_dtors_aux (84, 92)
+
+	Callee: 08048420 deregister_tm_clones (46, 60)
+                BB_Return: 60
+                BB_Function_Call: 89
+
+		Def: 89, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x80484a4:u32
+		Use: 50, 2 R_ESP_32:u32 = R_ESP_32:u32 + 4:u32
+
+
+		Def: 89, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x80484a4:u32
+		Use: 60, 2 R_ESP_32:u32 = R_ESP_32:u32 + 4:u32
+
+
+		Def: 91, 3 R_EBP_32:u32 = mem32:u32?u8[R_ESP_32:u32, e_little]:u32
+		Use: 54, 2 T_t_149:u32 = R_EBP_32:u32
+
+
+		Def: 91, 3 R_EBP_32:u32 = mem32:u32?u8[R_ESP_32:u32, e_little]:u32
+		Use: 59, 2 R_ESP_32:u32 = R_EBP_32:u32
+
+
+		Def: 92, 3 R_ESP_32:u32 = R_ESP_32:u32 + 4:u32
+		Use: 50, 2 R_ESP_32:u32 = R_ESP_32:u32 + 4:u32
+
+
+		Def: 92, 3 R_ESP_32:u32 = R_ESP_32:u32 + 4:u32
+		Use: 56, 7 R_PF:bool = ~low:bool(let T_acc_151:u32 := R_ESP_32:u32 >> 4:u32 ^ R_ESP_32:u32 in let T_acc_151:u32 := T_acc_151:u32 >> 2:u32 ^ T_acc_151:u32 in T_acc_151:u32 >> 1:u32 ^ T_acc_151:u32)
+
+
+		Def: 92, 3 R_ESP_32:u32 = R_ESP_32:u32 + 4:u32
+		Use: 60, 2 R_ESP_32:u32 = R_ESP_32:u32 + 4:u32
+
+
+		Def: 87, 2 R_EBP_32:u32 = R_ESP_32:u32
+		Use: 54, 2 T_t_149:u32 = R_EBP_32:u32
+
+
+		Def: 87, 2 R_EBP_32:u32 = R_ESP_32:u32
+		Use: 59, 2 R_ESP_32:u32 = R_EBP_32:u32
+
+
+		Def: 89, 2 R_ESP_32:u32 = R_ESP_32:u32 - 4:u32
+		Use: 50, 2 R_ESP_32:u32 = R_ESP_32:u32 + 4:u32
+
+
+		Def: 90, 2 mem32:u32?u8 = mem32:u32?u8 with [0x804a028:u32, e_little]:u8 = 1:u8
+		Use: 50, 2 R_ESP_32:u32 = R_ESP_32:u32 + 4:u32
+
+
+		Def: 90, 2 mem32:u32?u8 = mem32:u32?u8 with [0x804a028:u32, e_little]:u8 = 1:u8
+		Use: 60, 2 R_ESP_32:u32 = R_ESP_32:u32 + 4:u32
+
+
+
+
+Caller: frame_dummy 
+	BB_Min: 62
+	BB_Max: 106
+
+
+
+Caller: __libc_csu_fini
+	BB_Min: 232
+	BB_Max: 232
+
+
+
+Caller: __x86.get_pc_thunk.bx
+	BB_Min: 44
+	BB_Max: 45
+
+
+
+Caller: _fini
+	BB_Min: 233
+	BB_Max: 239
+
+
+	Callee: 08048410 __x86.get_pc_thunk.bx
+		BB_Min: 44
+		BB_Max: 45
+                BB_Return: 45
+                BB_Function_Call: 235
+
+		Def: 235, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x80486bd:u32
+		Use: 45, 2 R_ESP_32:u32 = R_ESP_32:u32 + 4:u32
+
+
+		Def: 239, 3 R_ESP_32:u32 = R_ESP_32:u32 + 4:u32
+		Use: 45, 2 R_ESP_32:u32 = R_ESP_32:u32 + 4:u32
+
+
+		Def: 235, 2 R_ESP_32:u32 = R_ESP_32:u32 - 4:u32
+		Use: 45, 2 R_ESP_32:u32 = R_ESP_32:u32 + 4:u32
+
+
+		Def: 236, 2 T_t1_243:u32 = R_EBX_32:u32
+		Use: 45, 2 R_ESP_32:u32 = R_ESP_32:u32 + 4:u32
+
+
+		Def: 237, 2 T_t1_246:u32 = R_ESP_32:u32
+		Use: 45, 2 R_ESP_32:u32 = R_ESP_32:u32 + 4:u32
+
+
+
+
+Caller: target
+	BB_Min: 123
+	BB_Max: 127
+
+
+
+Caller: lookup
+	BB_Min: 128
+	BB_Max: 145
+
+
+	Callee: 08048510 target
+		BB_Min: 123
+		BB_Max: 127
+                BB_Return: 127
+                BB_Function_Call: 137
+
+		Def: 144, 3 R_EBP_32:u32 = mem32:u32?u8[R_ESP_32:u32, e_little]:u32
+		Use: 123, 2 T_t_199:u32 = R_EBP_32:u32
+
+
+		Def: 145, 3 R_ESP_32:u32 = R_ESP_32:u32 + 4:u32
+		Use: 127, 2 T_ra_200:u32 = mem32:u32?u8[R_ESP_32:u32, e_little]:u32
+
+
+		Def: 129, 2 R_EBP_32:u32 = R_ESP_32:u32
+		Use: 123, 2 T_t_199:u32 = R_EBP_32:u32
+
+
+		Def: 138, 2 mem32:u32?u8 = mem32:u32?u8 with [R_EBP_32:u32 + -8:u32, e_little]:u32 = R_EAX_32:u32
+		Use: 127, 2 T_ra_200:u32 = mem32:u32?u8[R_ESP_32:u32, e_little]:u32
+
+
+		Def: 142, 2 mem32:u32?u8 = mem32:u32?u8 with [R_EBP_32:u32 + -8:u32, e_little]:u32 = R_EAX_32:u32
+		Use: 127, 2 T_ra_200:u32 = mem32:u32?u8[R_ESP_32:u32, e_little]:u32
+
+
+
+
+	Callee: 08048510 target
+		BB_Min: 123
+		BB_Max: 127
+                BB_Return: 127
+                BB_Function_Call: 141
+
+		Def: 144, 3 R_EBP_32:u32 = mem32:u32?u8[R_ESP_32:u32, e_little]:u32
+		Use: 123, 2 T_t_199:u32 = R_EBP_32:u32
+
+
+		Def: 145, 3 R_ESP_32:u32 = R_ESP_32:u32 + 4:u32
+		Use: 127, 2 T_ra_200:u32 = mem32:u32?u8[R_ESP_32:u32, e_little]:u32
+
+
+		Def: 129, 2 R_EBP_32:u32 = R_ESP_32:u32
+		Use: 123, 2 T_t_199:u32 = R_EBP_32:u32
+
+
+		Def: 138, 2 mem32:u32?u8 = mem32:u32?u8 with [R_EBP_32:u32 + -8:u32, e_little]:u32 = R_EAX_32:u32
+		Use: 127, 2 T_ra_200:u32 = mem32:u32?u8[R_ESP_32:u32, e_little]:u32
+
+
+		Def: 142, 2 mem32:u32?u8 = mem32:u32?u8 with [R_EBP_32:u32 + -8:u32, e_little]:u32 = R_EAX_32:u32
+		Use: 127, 2 T_ra_200:u32 = mem32:u32?u8[R_ESP_32:u32, e_little]:u32
+
+
+
+
+Caller: _start
+	BB_Min: 30
+	BB_Max: 43
+
+
+
+Caller: main
+	BB_Min: 146
+	BB_Max: 198
+
+
+	Callee: 080484dd checkReturn
+		BB_Min: 107
+		BB_Max: 122
+                BB_Return: 122
+                BB_Function_Call: 173
+
+		Def: 166, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x80485b5:u32
+		Use: 112, 3 R_CF:bool = mem32:u32?u8[R_EBP_32:u32 + 8:u32, e_little]:u32 < 0xa:u32
+
+
+		Def: 166, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x80485b5:u32
+		Use: 112, 4 R_OF:bool = high:bool((mem32:u32?u8[R_EBP_32:u32 + 8:u32, e_little]:u32 ^ 0xa:u32) & (mem32:u32?u8[R_EBP_32:u32 + 8:u32, e_little]:u32 ^ T_t_193:u32))
+
+
+		Def: 166, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x80485b5:u32
+		Use: 112, 5 R_AF:bool = 0x10:u32 == (0x10:u32 & (T_t_193:u32 ^ mem32:u32?u8[R_EBP_32:u32 + 8:u32, e_little]:u32 ^ 0xa:u32))
+
+
+		Def: 166, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x80485b5:u32
+		Use: 112, 6 R_PF:bool = ~low:bool(let T_acc_194:u32 := T_t_193:u32 >> 4:u32 ^ T_t_193:u32 in let T_acc_194:u32 := T_acc_194:u32 >> 2:u32 ^ T_acc_194:u32 in T_acc_194:u32 >> 1:u32 ^ T_acc_194:u32)
+
+
+		Def: 166, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x80485b5:u32
+		Use: 122, 2 R_ESP_32:u32 = R_ESP_32:u32 + 4:u32
+
+
+		Def: 170, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x80485c9:u32
+		Use: 112, 3 R_CF:bool = mem32:u32?u8[R_EBP_32:u32 + 8:u32, e_little]:u32 < 0xa:u32
+
+
+		Def: 170, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x80485c9:u32
+		Use: 112, 4 R_OF:bool = high:bool((mem32:u32?u8[R_EBP_32:u32 + 8:u32, e_little]:u32 ^ 0xa:u32) & (mem32:u32?u8[R_EBP_32:u32 + 8:u32, e_little]:u32 ^ T_t_193:u32))
+
+
+		Def: 170, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x80485c9:u32
+		Use: 112, 5 R_AF:bool = 0x10:u32 == (0x10:u32 & (T_t_193:u32 ^ mem32:u32?u8[R_EBP_32:u32 + 8:u32, e_little]:u32 ^ 0xa:u32))
+
+
+		Def: 170, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x80485c9:u32
+		Use: 112, 6 R_PF:bool = ~low:bool(let T_acc_194:u32 := T_t_193:u32 >> 4:u32 ^ T_t_193:u32 in let T_acc_194:u32 := T_acc_194:u32 >> 2:u32 ^ T_acc_194:u32 in T_acc_194:u32 >> 1:u32 ^ T_acc_194:u32)
+
+
+		Def: 170, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x80485c9:u32
+		Use: 122, 2 R_ESP_32:u32 = R_ESP_32:u32 + 4:u32
+
+
+		Def: 187, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x8048610:u32
+		Use: 112, 3 R_CF:bool = mem32:u32?u8[R_EBP_32:u32 + 8:u32, e_little]:u32 < 0xa:u32
+
+
+		Def: 187, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x8048610:u32
+		Use: 112, 4 R_OF:bool = high:bool((mem32:u32?u8[R_EBP_32:u32 + 8:u32, e_little]:u32 ^ 0xa:u32) & (mem32:u32?u8[R_EBP_32:u32 + 8:u32, e_little]:u32 ^ T_t_193:u32))
+
+
+		Def: 187, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x8048610:u32
+		Use: 112, 5 R_AF:bool = 0x10:u32 == (0x10:u32 & (T_t_193:u32 ^ mem32:u32?u8[R_EBP_32:u32 + 8:u32, e_little]:u32 ^ 0xa:u32))
+
+
+		Def: 187, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x8048610:u32
+		Use: 112, 6 R_PF:bool = ~low:bool(let T_acc_194:u32 := T_t_193:u32 >> 4:u32 ^ T_t_193:u32 in let T_acc_194:u32 := T_acc_194:u32 >> 2:u32 ^ T_acc_194:u32 in T_acc_194:u32 >> 1:u32 ^ T_acc_194:u32)
+
+
+		Def: 187, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x8048610:u32
+		Use: 122, 2 R_ESP_32:u32 = R_ESP_32:u32 + 4:u32
+
+
+		Def: 191, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x8048624:u32
+		Use: 112, 3 R_CF:bool = mem32:u32?u8[R_EBP_32:u32 + 8:u32, e_little]:u32 < 0xa:u32
+
+
+		Def: 191, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x8048624:u32
+		Use: 112, 4 R_OF:bool = high:bool((mem32:u32?u8[R_EBP_32:u32 + 8:u32, e_little]:u32 ^ 0xa:u32) & (mem32:u32?u8[R_EBP_32:u32 + 8:u32, e_little]:u32 ^ T_t_193:u32))
+
+
+		Def: 191, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x8048624:u32
+		Use: 112, 5 R_AF:bool = 0x10:u32 == (0x10:u32 & (T_t_193:u32 ^ mem32:u32?u8[R_EBP_32:u32 + 8:u32, e_little]:u32 ^ 0xa:u32))
+
+
+		Def: 191, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x8048624:u32
+		Use: 112, 6 R_PF:bool = ~low:bool(let T_acc_194:u32 := T_t_193:u32 >> 4:u32 ^ T_t_193:u32 in let T_acc_194:u32 := T_acc_194:u32 >> 2:u32 ^ T_acc_194:u32 in T_acc_194:u32 >> 1:u32 ^ T_acc_194:u32)
+
+
+		Def: 191, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x8048624:u32
+		Use: 122, 2 R_ESP_32:u32 = R_ESP_32:u32 + 4:u32
+
+
+		Def: 196, 3 R_ESP_32:u32 = R_ESP_32:u32 - 4:u32
+		Use: 109, 7 R_SF:bool = high:bool(R_ESP_32:u32)
+
+
+		Def: 196, 3 R_ESP_32:u32 = R_ESP_32:u32 - 4:u32
+		Use: 122, 2 R_ESP_32:u32 = R_ESP_32:u32 + 4:u32
+
+
+		Def: 197, 3 R_EBP_32:u32 = mem32:u32?u8[R_ESP_32:u32, e_little]:u32
+		Use: 107, 2 T_t_190:u32 = R_EBP_32:u32
+
+
+		Def: 197, 3 R_EBP_32:u32 = mem32:u32?u8[R_ESP_32:u32, e_little]:u32
+		Use: 112, 3 R_CF:bool = mem32:u32?u8[R_EBP_32:u32 + 8:u32, e_little]:u32 < 0xa:u32
+
+
+		Def: 197, 3 R_EBP_32:u32 = mem32:u32?u8[R_ESP_32:u32, e_little]:u32
+		Use: 112, 4 R_OF:bool = high:bool((mem32:u32?u8[R_EBP_32:u32 + 8:u32, e_little]:u32 ^ 0xa:u32) & (mem32:u32?u8[R_EBP_32:u32 + 8:u32, e_little]:u32 ^ T_t_193:u32))
+
+
+		Def: 197, 3 R_EBP_32:u32 = mem32:u32?u8[R_ESP_32:u32, e_little]:u32
+		Use: 112, 5 R_AF:bool = 0x10:u32 == (0x10:u32 & (T_t_193:u32 ^ mem32:u32?u8[R_EBP_32:u32 + 8:u32, e_little]:u32 ^ 0xa:u32))
+
+
+		Def: 197, 3 R_EBP_32:u32 = mem32:u32?u8[R_ESP_32:u32, e_little]:u32
+		Use: 112, 6 R_PF:bool = ~low:bool(let T_acc_194:u32 := T_t_193:u32 >> 4:u32 ^ T_t_193:u32 in let T_acc_194:u32 := T_acc_194:u32 >> 2:u32 ^ T_acc_194:u32 in T_acc_194:u32 >> 1:u32 ^ T_acc_194:u32)
+
+
+		Def: 197, 3 R_EBP_32:u32 = mem32:u32?u8[R_ESP_32:u32, e_little]:u32
+		Use: 121, 2 R_ESP_32:u32 = R_EBP_32:u32
+
+
+		Def: 198, 3 R_ESP_32:u32 = R_ESP_32:u32 + 4:u32
+		Use: 109, 7 R_SF:bool = high:bool(R_ESP_32:u32)
+
+
+		Def: 198, 3 R_ESP_32:u32 = R_ESP_32:u32 + 4:u32
+		Use: 122, 2 R_ESP_32:u32 = R_ESP_32:u32 + 4:u32
+
+
+		Def: 196, 4 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x804863b:u32
+		Use: 112, 3 R_CF:bool = mem32:u32?u8[R_EBP_32:u32 + 8:u32, e_little]:u32 < 0xa:u32
+
+		Def: 196, 4 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x804863b:u32
+		Use: 112, 4 R_OF:bool = high:bool((mem32:u32?u8[R_EBP_32:u32 + 8:u32, e_little]:u32 ^ 0xa:u32) & (mem32:u32?u8[R_EBP_32:u32 + 8:u32, e_little]:u32 ^ T_t_193:u32))
+
+		Def: 196, 4 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x804863b:u32
+		Use: 112, 5 R_AF:bool = 0x10:u32 == (0x10:u32 & (T_t_193:u32 ^ mem32:u32?u8[R_EBP_32:u32 + 8:u32, e_little]:u32 ^ 0xa:u32))
+
+		Def: 196, 4 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x804863b:u32
+		Use: 112, 6 R_PF:bool = ~low:bool(let T_acc_194:u32 := T_t_193:u32 >> 4:u32 ^ T_t_193:u32 in let T_acc_194:u32 := T_acc_194:u32 >> 2:u32 ^ T_acc_194:u32 in T_acc_194:u32 >> 1:u32 ^ T_acc_194:u32)
+
+		Def: 196, 4 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x804863b:u32
+		Use: 122, 2 R_ESP_32:u32 = R_ESP_32:u32 + 4:u32
+
+
+		Def: 147, 2 R_EBP_32:u32 = R_ESP_32:u32
+		Use: 107, 2 T_t_190:u32 = R_EBP_32:u32
+
+
+		Def: 147, 2 R_EBP_32:u32 = R_ESP_32:u32
+		Use: 112, 3 R_CF:bool = mem32:u32?u8[R_EBP_32:u32 + 8:u32, e_little]:u32 < 0xa:u32
+
+
+		Def: 147, 2 R_EBP_32:u32 = R_ESP_32:u32
+		Use: 112, 4 R_OF:bool = high:bool((mem32:u32?u8[R_EBP_32:u32 + 8:u32, e_little]:u32 ^ 0xa:u32) & (mem32:u32?u8[R_EBP_32:u32 + 8:u32, e_little]:u32 ^ T_t_193:u32))
+
+
+		Def: 147, 2 R_EBP_32:u32 = R_ESP_32:u32
+		Use: 112, 5 R_AF:bool = 0x10:u32 == (0x10:u32 & (T_t_193:u32 ^ mem32:u32?u8[R_EBP_32:u32 + 8:u32, e_little]:u32 ^ 0xa:u32))
+
+
+		Def: 147, 2 R_EBP_32:u32 = R_ESP_32:u32
+		Use: 112, 6 R_PF:bool = ~low:bool(let T_acc_194:u32 := T_t_193:u32 >> 4:u32 ^ T_t_193:u32 in let T_acc_194:u32 := T_acc_194:u32 >> 2:u32 ^ T_acc_194:u32 in T_acc_194:u32 >> 1:u32 ^ T_acc_194:u32)
+
+
+		Def: 147, 2 R_EBP_32:u32 = R_ESP_32:u32
+		Use: 121, 2 R_ESP_32:u32 = R_EBP_32:u32
+
+
+		Def: 163, 2 R_EAX_32:u32 = mem32:u32?u8[R_ESP_32:u32 + 0x20:u32, e_little]:u32
+		Use: 120, 8 R_PF:bool = ~low:bool(let T_acc_197:u32 := R_EAX_32:u32 >> 4:u32 ^ R_EAX_32:u32 in let T_acc_197:u32 := T_acc_197:u32 >> 2:u32 ^ T_acc_197:u32 in T_acc_197:u32 >> 1:u32 ^ T_acc_197:u32)
+
+
+		Def: 166, 2 R_ESP_32:u32 = R_ESP_32:u32 - 4:u32
+		Use: 109, 7 R_SF:bool = high:bool(R_ESP_32:u32)
+
+
+		Def: 166, 2 R_ESP_32:u32 = R_ESP_32:u32 - 4:u32
+		Use: 122, 2 R_ESP_32:u32 = R_ESP_32:u32 + 4:u32
+
+
+		Def: 167, 2 R_EAX_32:u32 = R_ESP_32:u32 + 0x1c:u32
+		Use: 120, 8 R_PF:bool = ~low:bool(let T_acc_197:u32 := R_EAX_32:u32 >> 4:u32 ^ R_EAX_32:u32 in let T_acc_197:u32 := T_acc_197:u32 >> 2:u32 ^ T_acc_197:u32 in T_acc_197:u32 >> 1:u32 ^ T_acc_197:u32)
+
+
+		Def: 170, 2 R_ESP_32:u32 = R_ESP_32:u32 - 4:u32
+		Use: 109, 7 R_SF:bool = high:bool(R_ESP_32:u32)
+
+
+		Def: 170, 2 R_ESP_32:u32 = R_ESP_32:u32 - 4:u32
+		Use: 122, 2 R_ESP_32:u32 = R_ESP_32:u32 + 4:u32
+
+
+		Def: 185, 2 R_EAX_32:u32 = mem32:u32?u8[R_ESP_32:u32 + 0x20:u32, e_little]:u32
+		Use: 120, 8 R_PF:bool = ~low:bool(let T_acc_197:u32 := R_EAX_32:u32 >> 4:u32 ^ R_EAX_32:u32 in let T_acc_197:u32 := T_acc_197:u32 >> 2:u32 ^ T_acc_197:u32 in T_acc_197:u32 >> 1:u32 ^ T_acc_197:u32)
+
+
+		Def: 187, 2 R_ESP_32:u32 = R_ESP_32:u32 - 4:u32
+		Use: 109, 7 R_SF:bool = high:bool(R_ESP_32:u32)
+
+
+		Def: 187, 2 R_ESP_32:u32 = R_ESP_32:u32 - 4:u32
+		Use: 122, 2 R_ESP_32:u32 = R_ESP_32:u32 + 4:u32
+
+
+		Def: 189, 2 R_EAX_32:u32 = R_ESP_32:u32 + 0x40:u32
+		Use: 120, 8 R_PF:bool = ~low:bool(let T_acc_197:u32 := R_EAX_32:u32 >> 4:u32 ^ R_EAX_32:u32 in let T_acc_197:u32 := T_acc_197:u32 >> 2:u32 ^ T_acc_197:u32 in T_acc_197:u32 >> 1:u32 ^ T_acc_197:u32)
+
+
+		Def: 191, 2 R_ESP_32:u32 = R_ESP_32:u32 - 4:u32
+		Use: 109, 7 R_SF:bool = high:bool(R_ESP_32:u32)
+
+
+		Def: 191, 2 R_ESP_32:u32 = R_ESP_32:u32 - 4:u32
+		Use: 122, 2 R_ESP_32:u32 = R_ESP_32:u32 + 4:u32
+
+
+		Def: 192, 2 R_EAX_32:u32 = 0:u32
+		Use: 120, 8 R_PF:bool = ~low:bool(let T_acc_197:u32 := R_EAX_32:u32 >> 4:u32 ^ R_EAX_32:u32 in let T_acc_197:u32 := T_acc_197:u32 >> 2:u32 ^ T_acc_197:u32 in T_acc_197:u32 >> 1:u32 ^ T_acc_197:u32)
+
+
+		Def: 194, 2 R_EDX_32:u32 = R_EDX_32:u32 ^ mem32:u32?u8[R_GS_BASE_32:u32 + 0x14:u32, e_little]:u32
+		Use: 120, 7 R_AF:bool = 0x10:u32 == (0x10:u32 & (R_EAX_32:u32 ^ T_t1_195:u32 ^ T_t2_196:u32))
+
+
+
+	Callee: 08048518 lookup
+		BB_Min: 128
+		BB_Max: 145
+                BB_Return: 145
+                BB_Function_Call: 177
+
+		Def: 166, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x80485b5:u32
+		Use: 133, 3 R_CF:bool = mem32:u32?u8[R_EBP_32:u32 + -4:u32, e_little]:u32 < 5:u32
+
+
+		Def: 166, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x80485b5:u32
+		Use: 133, 4 R_OF:bool = high:bool((mem32:u32?u8[R_EBP_32:u32 + -4:u32, e_little]:u32 ^ 5:u32) & (mem32:u32?u8[R_EBP_32:u32 + -4:u32, e_little]:u32 ^ T_t_204:u32))
+
+
+		Def: 166, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x80485b5:u32
+		Use: 133, 5 R_AF:bool = 0x10:u32 == (0x10:u32 & (T_t_204:u32 ^ mem32:u32?u8[R_EBP_32:u32 + -4:u32, e_little]:u32 ^ 5:u32))
+
+
+		Def: 166, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x80485b5:u32
+		Use: 133, 6 R_PF:bool = ~low:bool(let T_acc_205:u32 := T_t_204:u32 >> 4:u32 ^ T_t_204:u32 in let T_acc_205:u32 := T_acc_205:u32 >> 2:u32 ^ T_acc_205:u32 in T_acc_205:u32 >> 1:u32 ^ T_acc_205:u32)
+
+
+		Def: 166, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x80485b5:u32
+		Use: 145, 2 T_ra_206:u32 = mem32:u32?u8[R_ESP_32:u32, e_little]:u32
+
+
+		Def: 170, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x80485c9:u32
+		Use: 133, 3 R_CF:bool = mem32:u32?u8[R_EBP_32:u32 + -4:u32, e_little]:u32 < 5:u32
+
+
+		Def: 170, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x80485c9:u32
+		Use: 133, 4 R_OF:bool = high:bool((mem32:u32?u8[R_EBP_32:u32 + -4:u32, e_little]:u32 ^ 5:u32) & (mem32:u32?u8[R_EBP_32:u32 + -4:u32, e_little]:u32 ^ T_t_204:u32))
+
+
+		Def: 170, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x80485c9:u32
+		Use: 133, 5 R_AF:bool = 0x10:u32 == (0x10:u32 & (T_t_204:u32 ^ mem32:u32?u8[R_EBP_32:u32 + -4:u32, e_little]:u32 ^ 5:u32))
+
+
+		Def: 170, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x80485c9:u32
+		Use: 133, 6 R_PF:bool = ~low:bool(let T_acc_205:u32 := T_t_204:u32 >> 4:u32 ^ T_t_204:u32 in let T_acc_205:u32 := T_acc_205:u32 >> 2:u32 ^ T_acc_205:u32 in T_acc_205:u32 >> 1:u32 ^ T_acc_205:u32)
+
+
+		Def: 170, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x80485c9:u32
+		Use: 145, 2 T_ra_206:u32 = mem32:u32?u8[R_ESP_32:u32, e_little]:u32
+
+
+		Def: 187, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x8048610:u32
+		Use: 133, 3 R_CF:bool = mem32:u32?u8[R_EBP_32:u32 + -4:u32, e_little]:u32 < 5:u32
+
+
+		Def: 187, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x8048610:u32
+		Use: 133, 4 R_OF:bool = high:bool((mem32:u32?u8[R_EBP_32:u32 + -4:u32, e_little]:u32 ^ 5:u32) & (mem32:u32?u8[R_EBP_32:u32 + -4:u32, e_little]:u32 ^ T_t_204:u32))
+
+
+		Def: 187, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x8048610:u32
+		Use: 133, 5 R_AF:bool = 0x10:u32 == (0x10:u32 & (T_t_204:u32 ^ mem32:u32?u8[R_EBP_32:u32 + -4:u32, e_little]:u32 ^ 5:u32))
+
+
+		Def: 187, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x8048610:u32
+		Use: 133, 6 R_PF:bool = ~low:bool(let T_acc_205:u32 := T_t_204:u32 >> 4:u32 ^ T_t_204:u32 in let T_acc_205:u32 := T_acc_205:u32 >> 2:u32 ^ T_acc_205:u32 in T_acc_205:u32 >> 1:u32 ^ T_acc_205:u32)
+
+
+		Def: 187, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x8048610:u32
+		Use: 145, 2 T_ra_206:u32 = mem32:u32?u8[R_ESP_32:u32, e_little]:u32
+
+
+		Def: 191, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x8048624:u32
+		Use: 133, 3 R_CF:bool = mem32:u32?u8[R_EBP_32:u32 + -4:u32, e_little]:u32 < 5:u32
+
+
+		Def: 191, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x8048624:u32
+		Use: 133, 4 R_OF:bool = high:bool((mem32:u32?u8[R_EBP_32:u32 + -4:u32, e_little]:u32 ^ 5:u32) & (mem32:u32?u8[R_EBP_32:u32 + -4:u32, e_little]:u32 ^ T_t_204:u32))
+
+
+		Def: 191, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x8048624:u32
+		Use: 133, 5 R_AF:bool = 0x10:u32 == (0x10:u32 & (T_t_204:u32 ^ mem32:u32?u8[R_EBP_32:u32 + -4:u32, e_little]:u32 ^ 5:u32))
+
+
+		Def: 191, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x8048624:u32
+		Use: 133, 6 R_PF:bool = ~low:bool(let T_acc_205:u32 := T_t_204:u32 >> 4:u32 ^ T_t_204:u32 in let T_acc_205:u32 := T_acc_205:u32 >> 2:u32 ^ T_acc_205:u32 in T_acc_205:u32 >> 1:u32 ^ T_acc_205:u32)
+
+
+		Def: 191, 3 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x8048624:u32
+		Use: 145, 2 T_ra_206:u32 = mem32:u32?u8[R_ESP_32:u32, e_little]:u32
+
+
+		Def: 196, 3 R_ESP_32:u32 = R_ESP_32:u32 - 4:u32
+		Use: 130, 7 R_SF:bool = high:bool(R_ESP_32:u32)
+
+
+		Def: 196, 3 R_ESP_32:u32 = R_ESP_32:u32 - 4:u32
+		Use: 145, 2 T_ra_206:u32 = mem32:u32?u8[R_ESP_32:u32, e_little]:u32
+
+
+		Def: 197, 3 R_EBP_32:u32 = mem32:u32?u8[R_ESP_32:u32, e_little]:u32
+		Use: 128, 2 T_t_201:u32 = R_EBP_32:u32
+
+
+		Def: 197, 3 R_EBP_32:u32 = mem32:u32?u8[R_ESP_32:u32, e_little]:u32
+		Use: 133, 3 R_CF:bool = mem32:u32?u8[R_EBP_32:u32 + -4:u32, e_little]:u32 < 5:u32
+
+
+		Def: 197, 3 R_EBP_32:u32 = mem32:u32?u8[R_ESP_32:u32, e_little]:u32
+		Use: 133, 4 R_OF:bool = high:bool((mem32:u32?u8[R_EBP_32:u32 + -4:u32, e_little]:u32 ^ 5:u32) & (mem32:u32?u8[R_EBP_32:u32 + -4:u32, e_little]:u32 ^ T_t_204:u32))
+
+
+		Def: 197, 3 R_EBP_32:u32 = mem32:u32?u8[R_ESP_32:u32, e_little]:u32
+		Use: 133, 5 R_AF:bool = 0x10:u32 == (0x10:u32 & (T_t_204:u32 ^ mem32:u32?u8[R_EBP_32:u32 + -4:u32, e_little]:u32 ^ 5:u32))
+
+
+		Def: 197, 3 R_EBP_32:u32 = mem32:u32?u8[R_ESP_32:u32, e_little]:u32
+		Use: 133, 6 R_PF:bool = ~low:bool(let T_acc_205:u32 := T_t_204:u32 >> 4:u32 ^ T_t_204:u32 in let T_acc_205:u32 := T_acc_205:u32 >> 2:u32 ^ T_acc_205:u32 in T_acc_205:u32 >> 1:u32 ^ T_acc_205:u32)
+
+
+		Def: 197, 3 R_EBP_32:u32 = mem32:u32?u8[R_ESP_32:u32, e_little]:u32
+		Use: 144, 2 R_ESP_32:u32 = R_EBP_32:u32
+
+
+		Def: 198, 3 R_ESP_32:u32 = R_ESP_32:u32 + 4:u32
+		Use: 130, 7 R_SF:bool = high:bool(R_ESP_32:u32)
+
+
+		Def: 198, 3 R_ESP_32:u32 = R_ESP_32:u32 + 4:u32
+		Use: 145, 2 T_ra_206:u32 = mem32:u32?u8[R_ESP_32:u32, e_little]:u32
+
+
+		Def: 196, 4 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x804863b:u32
+		Use: 133, 3 R_CF:bool = mem32:u32?u8[R_EBP_32:u32 + -4:u32, e_little]:u32 < 5:u32
+
+
+		Def: 196, 4 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x804863b:u32
+		Use: 133, 4 R_OF:bool = high:bool((mem32:u32?u8[R_EBP_32:u32 + -4:u32, e_little]:u32 ^ 5:u32) & (mem32:u32?u8[R_EBP_32:u32 + -4:u32, e_little]:u32 ^ T_t_204:u32))
+
+
+		Def: 196, 4 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x804863b:u32
+		Use: 133, 5 R_AF:bool = 0x10:u32 == (0x10:u32 & (T_t_204:u32 ^ mem32:u32?u8[R_EBP_32:u32 + -4:u32, e_little]:u32 ^ 5:u32))
+
+
+		Def: 196, 4 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x804863b:u32
+		Use: 133, 6 R_PF:bool = ~low:bool(let T_acc_205:u32 := T_t_204:u32 >> 4:u32 ^ T_t_204:u32 in let T_acc_205:u32 := T_acc_205:u32 >> 2:u32 ^ T_acc_205:u32 in T_acc_205:u32 >> 1:u32 ^ T_acc_205:u32)
+
+
+		Def: 196, 4 mem32:u32?u8 = mem32:u32?u8 with [R_ESP_32:u32, e_little]:u32 = 0x804863b:u32
+		Use: 145, 2 T_ra_206:u32 = mem32:u32?u8[R_ESP_32:u32, e_little]:u32
+
+
+		Def: 147, 2 R_EBP_32:u32 = R_ESP_32:u32
+		Use: 128, 2 T_t_201:u32 = R_EBP_32:u32
+
+
+		Def: 147, 2 R_EBP_32:u32 = R_ESP_32:u32
+		Use: 133, 3 R_CF:bool = mem32:u32?u8[R_EBP_32:u32 + -4:u32, e_little]:u32 < 5:u32
+
+
+		Def: 147, 2 R_EBP_32:u32 = R_ESP_32:u32
+		Use: 133, 4 R_OF:bool = high:bool((mem32:u32?u8[R_EBP_32:u32 + -4:u32, e_little]:u32 ^ 5:u32) & (mem32:u32?u8[R_EBP_32:u32 + -4:u32, e_little]:u32 ^ T_t_204:u32))
+
+
+		Def: 147, 2 R_EBP_32:u32 = R_ESP_32:u32
+		Use: 133, 5 R_AF:bool = 0x10:u32 == (0x10:u32 & (T_t_204:u32 ^ mem32:u32?u8[R_EBP_32:u32 + -4:u32, e_little]:u32 ^ 5:u32))
+
+
+		Def: 147, 2 R_EBP_32:u32 = R_ESP_32:u32
+		Use: 133, 6 R_PF:bool = ~low:bool(let T_acc_205:u32 := T_t_204:u32 >> 4:u32 ^ T_t_204:u32 in let T_acc_205:u32 := T_acc_205:u32 >> 2:u32 ^ T_acc_205:u32 in T_acc_205:u32 >> 1:u32 ^ T_acc_205:u32)
+
+
+		Def: 147, 2 R_EBP_32:u32 = R_ESP_32:u32
+		Use: 144, 2 R_ESP_32:u32 = R_EBP_32:u32
+
+
+		Def: 166, 2 R_ESP_32:u32 = R_ESP_32:u32 - 4:u32
+		Use: 130, 7 R_SF:bool = high:bool(R_ESP_32:u32)
+
+
+		Def: 166, 2 R_ESP_32:u32 = R_ESP_32:u32 - 4:u32
+		Use: 145, 2 T_ra_206:u32 = mem32:u32?u8[R_ESP_32:u32, e_little]:u32
+
+
+		Def: 170, 2 R_ESP_32:u32 = R_ESP_32:u32 - 4:u32
+		Use: 130, 7 R_SF:bool = high:bool(R_ESP_32:u32)
+
+
+		Def: 170, 2 R_ESP_32:u32 = R_ESP_32:u32 - 4:u32
+		Use: 145, 2 T_ra_206:u32 = mem32:u32?u8[R_ESP_32:u32, e_little]:u32
+
+
+		Def: 187, 2 R_ESP_32:u32 = R_ESP_32:u32 - 4:u32
+		Use: 130, 7 R_SF:bool = high:bool(R_ESP_32:u32)
+
+
+		Def: 187, 2 R_ESP_32:u32 = R_ESP_32:u32 - 4:u32
+		Use: 145, 2 T_ra_206:u32 = mem32:u32?u8[R_ESP_32:u32, e_little]:u32
+
+
+		Def: 191, 2 R_ESP_32:u32 = R_ESP_32:u32 - 4:u32
+		Use: 130, 7 R_SF:bool = high:bool(R_ESP_32:u32)
+
+
+		Def: 191, 2 R_ESP_32:u32 = R_ESP_32:u32 - 4:u32
+		Use: 145, 2 T_ra_206:u32 = mem32:u32?u8[R_ESP_32:u32, e_little]:u32
+
+
+
+
+Caller: checkReturn
+	BB_Min: 107
+	BB_Max: 122
+
+
+
