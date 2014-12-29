@@ -22,6 +22,7 @@ Case B:
 Setup
 -----
 This code is compatible with LLVM 3.3
+
 1. Please place the "TaintAnalysis" directory in the lib/ directory of LLVM source.
 2. Execute make in TaintAnalysis. (if LLVM is built in debug mode execute the RunMake.sh )
 3. A sample command to run the code is: (this requires that the file paths be updated)
