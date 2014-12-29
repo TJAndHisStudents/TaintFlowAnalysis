@@ -1,6 +1,6 @@
 Taint Analysis
 ======
-This code generate taint flow information for the binary lifted bitcode files from two possible sources. For the BAP lifted input the taint sources are specified in the file, while for the hex decompiled code the standard input functions are considered as the source for tainting.
+This code generates taint flow information for the binary lifted bitcode files from two possible sources. For the BAP lifted input the taint sources are specified in an input file, while for the hex decompiled code the standard input functions(scanf,read etc) are considered as the sources for tainting.
 
 Prerequisites
 ------
