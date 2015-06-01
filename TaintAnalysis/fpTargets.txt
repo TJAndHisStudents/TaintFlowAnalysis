@@ -1,0 +1,5 @@
+mon_kerninfo
+mon_backtrace
+mon_showmapping
+mon_help
+commands

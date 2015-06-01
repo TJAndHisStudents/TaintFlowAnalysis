@@ -1,0 +1,3 @@
+#!/bin/bash
+
+make ENABLE_OPTIMIZED=0 ENABLE_CXX11=1
