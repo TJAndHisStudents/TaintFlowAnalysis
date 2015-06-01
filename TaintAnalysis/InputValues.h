@@ -1,6 +1,5 @@
 /*
  * InputDeps.h
- *
  */
 
 #ifndef INPUTVALUES_H_
@@ -10,9 +9,9 @@
 #include "llvm/IR/Module.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/ADT/DenseMap.h"
-#include "llvm/Support/CFG.h"
+#include "llvm/IR/CFG.h"
 #include "llvm/IR/Instructions.h"
-#include "llvm/Support/CallSite.h"
+#include "llvm/IR/CallSite.h"
 #include "llvm/Support/raw_ostream.h"
 #include <set>
 #include <string>

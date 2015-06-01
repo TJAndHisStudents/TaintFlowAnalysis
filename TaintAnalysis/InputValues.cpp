@@ -1,6 +1,5 @@
 /*
  * InputDeps.cpp
- *
  */
 
 #define DEBUG_TYPE "InputDeps"
@@ -47,19 +46,42 @@ bool llvm::InputValues::runOnModule(Module& M) {
 
     collectMainArguments();
 int one=0;
-errs()<<"\n------------------------------------------------\n";
+ errs()<<"\n------------------------------------------------\n";
 	for(Module::iterator Fit = M.begin(), Fend = M.end(); Fit != Fend; Fit++){
 
 		for (Function::iterator BBit = Fit->begin(), BBend = Fit->end(); BBit != BBend; BBit++) {
 			
 			for (BasicBlock::iterator Iit = BBit->begin(), Iend = BBit->end(); Iit != Iend; Iit++) {
+			
+				if(one<2)
+				{
+			    Value* V_in;
+			     //FIXME: Temporary assignment of the tainted source for testing...
+			     if(BBit->getName()=="BB_146")
+			     {
+			    //   errs() << "Inside BB_0";
+			      if(LoadInst *LI = dyn_cast<LoadInst>(Iit))  
+			       {
+			     //   LI->dump();
+			        V_in = LI->getPointerOperand();
+			        errs() <<"\ntaint source " << LI->getName() << " ";
+			        errs() << V_in;
+			        insertInInputDepValues(V_in);
+			        //NumInputValues++;
+			        one++;
+			        }
+			     }
+			     
+			     }
+
+
 
 				if (CallInst *CI = dyn_cast<CallInst>(Iit)) {
 
 					if (isMarkedCallInst(CI)){
 
 						//Values returned by marked instructions
-					//	insertInInputDepValues(CI);
+						insertInInputDepValues(CI);
 
 						for(unsigned int i = 0; i < CI->getNumOperands(); i++){
 
@@ -80,7 +102,7 @@ errs()<<"\n------------------------------------------------\n";
 
 	}
 
-errs()<<"\n------------------------------------------------\n";
+ errs()<<"\n------------------------------------------------\n";
 	NumInputValues = inputValues.size();
 
 	//We don't modify anything, so we must return false;
@@ -158,13 +180,7 @@ void llvm::InputValues::collectMainArguments() {
 
 }
 
-/*
- * We don't expose the implementation of the pass.
- * The client passes will use this pass only to consult
- * if values are input-dependent.
- * Thus, we only provide this public function, to allow the
- * client passes to consult if a value is input-dependent or not.
- */
+
 bool llvm::InputValues::isInputDependent(Value* V) {
 	return inputValues.count(V);
 }

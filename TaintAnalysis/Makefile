@@ -1,17 +1,16 @@
-##===- lib/TaintAnalysis/Makefile ------------------------------===##
+##===- lib/HookPlacement/Makefile -----------*- Makefile -*-===##
 #
-# Created : 
-# By : Nirupama Talele
-# Pennsylvania State University
+#                     The LLVM Compiler Infrastructure
+#
+# This file is distributed under the University of Illinois Open Source
+# License. See LICENSE.TXT for details.
 #
 ##===----------------------------------------------------------------------===##
 
 LEVEL = ../..
-#PARALLEL_DIRS = Utils Instrumentation Scalar InstCombine IPO Vectorize Hello ObjCARC
-LIBRARYNAME = TaintB
+LIBRARYNAME = TaintFlow
 LOADABLE_MODULE = 1
-
-include $(LEVEL)/Makefile.config
-
+USEDLIBS = 
 
 include $(LEVEL)/Makefile.common
+
