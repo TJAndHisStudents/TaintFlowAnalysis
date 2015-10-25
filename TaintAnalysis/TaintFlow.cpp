@@ -39,7 +39,7 @@ bool TaintFlow::runOnModule(Module &M) {
 		targetFunctions = IV.getTargetFunctions();
 		targetBlocks = IV.getTargetBlock();
 		sourceTypes = IV.getSourceTypes();
-       // targetVal = IV.getTargetValue();
+
 	}
 	
 	blockAssign &bssa = getAnalysis<blockAssign> ();
