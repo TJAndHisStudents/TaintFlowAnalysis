@@ -43,6 +43,7 @@ cl::opt<std::string> LookupFile("lookup", cl::desc("<Lookup file>"), cl::init("-
 
 cl::opt<std::string> fpFile("fp", cl::desc("<FP Function targets file>"), cl::init("-"));
 
+
 //TODO: Verify signature
 
 /*
@@ -88,11 +89,114 @@ bool InputDep::runOnModule(Module &M) {
 	 ReadTargets();
 	 ReadFPTargets();
      ReadTaintInput();
+//     ReadRelevantFields();
 
      errs() << "Taint Inputs REad: " << taintSources.size();
 
     set<Value*> storedVals;
     set<Value*> repeatVals;
+
+    //Taint Global Vars;
+
+
+    //errs()<<"\n\n ******* Processing globals..";
+    for(std::set<TaintSource*>::iterator ts = taintSources.begin();ts != taintSources.end(); ++ts)
+    {
+        //  std::string funcName= F->getName();
+        // errs()<<"\n Processing globals.. entry: " << (*ts)->functionName;
+        std::string glob = "global";
+        if(std::strcmp(glob.c_str(),(*ts)->functionName.c_str())==0)
+        {
+           // errs()<<"\n\n *******Op Name from file.. .. for gloabl " <<(*ts)->variable;
+            for (Module::global_iterator GVI = M.global_begin(), E = M.global_end();
+                 GVI != E; ) {
+                GlobalVariable *GV = GVI++;
+                // Global variables without names cannot be referenced outside this module.
+                if (GV->hasName())
+                {
+                    //Process the GV to add in tainted vars..
+                    Value* GV_Val = GV;
+                //  int temp;
+                //    Value* operand = I->getOperand(i);
+                std::string opName = GV->getName();
+
+                if(opName==(*ts)->variable)
+                {
+                    // errs()<<"\nOp Name "<<  opName <<" and " <<(*ts)->variable;
+                    inputDepValues.insert(GV_Val);
+
+                    //Also add all the uses of the global in the tainted set..
+                    //GV->use_begin();
+                   // errs()<<"\n Getting all uses of the globals.. ";
+                    for(GlobalValue::user_iterator GV_UI = GV->user_begin(); GV_UI != GV->user_end(); ++GV_UI)
+                    {
+                       // Value * GVUser = (*GV_UI);
+                        //User *U = GV_   getUser();
+                        (*GV_UI)->dump();
+                        if(isa<StoreInst>(*GV_UI))
+                        {
+                            //Handle appropriately..
+                        //    errs()<<"\n Is Stored..in a ptr.. ";
+                            StoreInst *SI = dyn_cast<StoreInst>(*GV_UI);
+                          //  Value* assignedVal = SI->getValueOperand();
+                            Value* pointerOperand = SI->getPointerOperand();
+                            inputDepValues.insert(pointerOperand);
+                            NumInputValues++;
+
+                        }
+                        else if(isa<LoadInst>(*GV_UI))
+                        {
+                         //    errs()<<"\n Is loaded from a ptr.. ";
+                             LoadInst * LI = dyn_cast<LoadInst>(*GV_UI);
+                           //  Value* assignedVal = SI->getValueOperand();
+                            // Value* pointerOperand = LI->get
+                             inputDepValues.insert(LI);
+                             NumInputValues++;
+                        }
+
+                        else if (!isa<CallInst>(*GV_UI) && !isa<InvokeInst>(*GV_UI)) {
+                            if((*GV_UI)->use_empty())
+                                continue;
+                          //  errs()<<"\n Is used in call instruction..";
+                            //Todo: handle at the function def, as the param will be const and no lookup.
+                            //Quick fix.. taint call return val since global constants mostly used in lib calls.
+                            Value * UserVal = (*GV_UI);
+                            inputDepValues.insert(UserVal);
+                            NumInputValues++;
+
+                        }
+                        else
+                        {
+                            //all other instructions.. Apply taint to the result of the statement.
+                          //   errs()<<"\n Is used in statement.. ";
+                            // (*GV_UI)->dump();
+                            Value * UserVal = (*GV_UI);
+                            inputDepValues.insert(UserVal);
+                            NumInputValues++;
+
+                        }
+
+                    }
+
+                    //   ListAllUses(operand,F);
+
+                   // GV_Val->
+                              NumInputValues++;
+//                    if (MDNode *mdn = I->getMetadata("dbg")) {
+
+//                        DILocation Loc(mdn);
+//                        unsigned Line = Loc.getLineNumber();
+//                        lineNo[operand] = Line;
+//                    }
+
+                    // errs()<<"\nVar map found "<<opName;
+                    //errs()<<"  Name " <<I->getName();
+                } //if match found.
+
+                }
+            } //iterate over gloabls.
+        } //if global
+    } //iterate over taint sources.
 
 	for (Module::iterator F = M.begin(), eM = M.end(); F != eM; ++F) {
       // errs()<<"\nFunction name: " << F->getName();
@@ -386,7 +490,7 @@ bool InputDep::runOnModule(Module &M) {
                             if(opName==(*ts)->variable)
                             {
                                 inputDepValues.insert(operand);
-                                ListAllUses(operand,F);
+                             //   ListAllUses(operand,F);
                                 if (MDNode *mdn = I->getMetadata("dbg")) {
                                     NumInputValues++;
                                     DILocation Loc(mdn);
@@ -450,6 +554,16 @@ bool InputDep::runOnModule(Module &M) {
                             if(debug) errs() << "Input  main args  " << *V << "\n";
                              if(debug) errs() << "In Function  " <<F->getName()<<"\n";
 						}
+
+                        //GEtting the return value from socket call as the input..!!
+                        if (Name.equals("socket")) {
+                            inputDepValues.insert(CI);
+                            inserted = true;
+                            if(debug) errs() << "Input fgetc,getchar   " << *CI << "\n";
+                             if(debug) errs() << "In Function  " <<F->getName()<<"\n";
+                        }
+
+
 
 ///------------------------------------automatically check for some input functions as taint source..--------------
 /*
@@ -523,7 +637,7 @@ bool InputDep::runOnModule(Module &M) {
                         else if(Name.equals("foo")) {
                             errs()<<"------------Call to foo detected.---\n\n";
 						}
-                        */
+*/
  ///------------------------------------automatically check for some input functions as taint source..--------------
 
 						if (inserted) {
@@ -747,6 +861,8 @@ void InputDep::ReadTaintInput(){
             }
         }
 }
+
+
 
 
 void InputDep::getAnalysisUsage(AnalysisUsage &AU) const {

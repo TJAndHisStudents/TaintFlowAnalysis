@@ -1,6 +1,7 @@
 #include "FlowGraph.h"
 
 #define debug false
+#define code false
 
 #define printMem false
 using namespace llvm;
@@ -38,7 +39,7 @@ void MemoryOperation::setVal()
             string blockName = parentBlock->getName();
             stringStream <<funcName<<"_"<<blockName << "_"<<lineNumber;
         }
-    else
+        else
         {
             stringStream <<funcName<<"_Param";
         }
@@ -774,6 +775,80 @@ void llvm::Graph::toDot(std::string s, raw_ostream *stream, llvm::Graph::Guider*
 
 
 
+GraphNode* Graph::addParamNode(Value *v, Function * func)
+{
+    GraphNode  *Var;
+
+    if (isValidInst(v)) { //If is a data manipulator instruction
+        Var = this->findNode(v);
+
+        if(Var==NULL)
+        {
+            if(isMemoryPointer(v))
+            {
+                Var = new MemNode(USE_ALIAS_SETS ? AS->getValueSetKey(v) : 0, AS);
+                memNodes[USE_ALIAS_SETS ? AS->getValueSetKey(v) : 0] = Var;
+            }
+            else
+            {
+                Var = new VarNode(v);
+                varNodes[v] = Var;
+            }
+
+            //   GraphNode * newParamNode =
+        }
+        else if(isa<MemNode>(Var))
+        {
+            //   BasicBlock* parentBlock
+
+            GraphNode* newVar = Var->clone();
+            MemNode * memNew = dyn_cast<MemNode>(newVar);
+            memNew->defLoc->parentBlock = NULL;
+            //    errs()<<"\nFound a mem node..!! "<<parentBlock->getName() <<"\n";
+            memNew->defLoc->assignedValue = v;
+            //memNew->defLoc->lineNumber = Instcounter;
+            memNew->defLoc->parentFunction = func;
+            memNew->defLoc->MemInst = v; //dyn_cast<Value*>(&SI);
+            memNew->defLoc->isParam = true;
+            memNew->defLoc->setVal();
+            //errs()<<"\n IDVALUE Obtained: ---- "<< memNew->defLoc->IdValue;
+            set<MemoryOperation* > defSets = RDSMap[v];
+            defSets.insert(memNew->defLoc);
+            RDSMap[v] = defSets;
+
+            //   if(printMem)   errs()<<"\n  New node gen:    "<<memNew->getLabel()<<"   Line   :"<< Instcounter<<"\n";
+            // if(printMem)  v->dump();
+            //StoreNodeMap[SI] = memNew;
+            //functionParamMap
+            //funcParMapLocal
+
+            Var->connect(memNew);
+            Var = memNew;
+            //nodes.insert(memNew);
+        }
+
+        //Update in the Function param info in the global data structure.
+        //  BasicBlock* parentBlock = v->getParent();
+        if(func)
+        {
+            //  Function* Func = parentBlock->getParent();
+            FuncParamInfo* funcParam;
+            funcParam = functionParamMap[func];
+            if(!funcParam)
+                funcParam = new FuncParamInfo();
+
+            funcParam->ParamNodeMap[v] = Var;
+            functionParamMap[func]= funcParam;
+
+        }
+
+
+        nodes.insert(Var);
+    }
+
+    return Var;
+}
+
 
 GraphNode* Graph::addInst(Value *v, int Instcounter, Function * func) {
 
@@ -782,126 +857,59 @@ GraphNode* Graph::addInst(Value *v, int Instcounter, Function * func) {
     CallInst* CI = dyn_cast<CallInst> (v);
     bool hasVarNode = true;
 
-    //  errs()<<"\n For debug.. to see what happens of each instructions..";
-    //
-
-     if(printMem) errs()<<"\n-------------------------";
-      if(printMem) v->dump();
+    if(code) errs()<<"\n-------------------------";
+    if(code) v->dump();
 
     if (isValidInst(v)) { //If is a data manipulator instruction
         Var = this->findNode(v);
-
-        //Process the parameters of a function..!! irrespective of it the pointer node already exisits
-        //we need to create a new node for getting the connections from each call Site...
-        // This will also be treated as store..
-        // on creating add the info in the funcparam, global as well as local..!
-        //-10 indicates that we are adding a parameter var.. need to change this later..
-        if(Instcounter==-10)
-        {
-           // errs()<<"\n           PARAMETER adding right now..!!";
-          //  v->dump();
-
-            if(Var==NULL)
-            {
-                if(isMemoryPointer(v))
-                {
-                Var = new MemNode(USE_ALIAS_SETS ? AS->getValueSetKey(v) : 0, AS);
-                memNodes[USE_ALIAS_SETS ? AS->getValueSetKey(v) : 0] = Var;
-                }
-                else
-                {
-                    Var = new VarNode(v);
-                    varNodes[v] = Var;
-                }
-
-         //   GraphNode * newParamNode =
-            }
-            else if(isa<MemNode>(Var))
-            {
-                  //   BasicBlock* parentBlock = v->getParent();
-
-                    GraphNode* newVar = Var->clone();
-                    MemNode * memNew = dyn_cast<MemNode>(newVar);
-                    memNew->defLoc->parentBlock = NULL;
-                    //    errs()<<"\nFound a mem node..!! "<<parentBlock->getName() <<"\n";
-                    memNew->defLoc->assignedValue = v;
-                    memNew->defLoc->lineNumber = Instcounter;
-                    memNew->defLoc->parentFunction = func;
-                    memNew->defLoc->MemInst = v; //dyn_cast<Value*>(&SI);
-                    memNew->defLoc->isParam = true;
-                    memNew->defLoc->setVal();
-                    //errs()<<"\n IDVALUE Obtained: ---- "<< memNew->defLoc->IdValue;
-                    set<MemoryOperation* > defSets = RDSMap[v];
-                    defSets.insert(memNew->defLoc);
-                    RDSMap[v] = defSets;
-                    // RDSMap[pointerOperand].insert(memNew->defLoc);
-                    if(printMem)   errs()<<"\n  New node gen:    "<<memNew->getLabel()<<"   Line   :"<< Instcounter<<"\n";
-                    if(printMem)  v->dump();
-                    //StoreNodeMap[SI] = memNew;
-             //functionParamMap
-                     //funcParMapLocal
-
-                    Var->connect(memNew);
-                    Var = memNew;
-                    //nodes.insert(memNew);
-            }
-
-            //Update in the Function param info in the global data structure.
-          //  BasicBlock* parentBlock = v->getParent();
-            if(func)
-            {
-              //  Function* Func = parentBlock->getParent();
-                FuncParamInfo* funcParam;
-                funcParam = functionParamMap[func];
-                if(!funcParam)
-                    funcParam = new FuncParamInfo();
-
-                funcParam->ParamNodeMap[v] = Var;
-                functionParamMap[func]= funcParam;
-
-            }
-
-
-             nodes.insert(Var);
-        }
-
-
-
         /*
                  * If Var is NULL, the value hasn't been processed yet, so we must process it
-                 *
                  * However, if Var is a Pointer, maybe the memory node already exists but the
                  * operation node aren't in the graph, yet. Thus we must process it.
                  */
         if (Var == NULL || (Var != NULL && findOpNode(v) == NULL)) { //If it has not processed yet
-           // errs()<<" in the process condition";
-
             //If Var isn't NULL, we won't create another node for it
             if (Var == NULL) {
-            //    errs()<<" in var null";
-
                 if (CI) {
                     hasVarNode = !CI->getType()->isVoidTy();
                 }
 
                 if (hasVarNode) {
-                 //   errs()<<" in has var node";
+                    //   errs()<<" in has var node";
+
                     if (StoreInst* SI = dyn_cast<StoreInst>(v))
                     {
-                        //Before adding in the operand.. add it in definitions..
-                        //      SI->dump();
-                        //Get the pointer operand and generate the mem node for it..
-
-                        //FIELD: To check if the ptr type is relevant gep.. then we need to create store node for the field.. ?
-                        //The map has to be added as base+offset. basically a new type of memnode.. clean this a bit conceptually.
-
 
                         Var = addInst(SI->getOperand(1),Instcounter,func); // We do this here because we want to represent the store instructions as a flow of information of a data to a memory node
                         BasicBlock* parentBlock = SI->getParent();
                         Value* assignedVal = SI->getValueOperand();
                         Value* pointerOperand = SI->getPointerOperand();
 
-                        if(isa<MemNode>(Var))
+                        if(isa<GetElementPtrInst>(pointerOperand) && isa<MemNode>(Var))
+                        {
+                            for(set<Value*>::iterator fields = FieldsVal.begin(); fields != FieldsVal.end(); ++fields)
+                            {
+                                if(pointerOperand==(*fields))
+                                {
+                                    //match for field found .. create new node.
+                                    GraphNode* newVar = Var->clone();
+                                    MemNode * memNew = dyn_cast<MemNode>(newVar);
+                                    memNew->defLoc->parentBlock = parentBlock;
+                                    //    errs()<<"\nFound a mem node..!! "<<parentBlock->getName() <<"\n";
+                                    memNew->defLoc->assignedValue = assignedVal;
+                                    memNew->defLoc->lineNumber = Instcounter;
+                                    memNew->defLoc->parentFunction = parentBlock->getParent();
+                                    memNew->defLoc->MemInst = SI;//dyn_cast<Value*>(&SI);
+                                    memNew->defLoc->setVal();
+                                    StoreNodeMap[SI] = memNew;
+                                    // Var->connect(memNew);
+                                    Var = memNew;
+                                    nodes.insert(memNew);
+                                }
+                            }
+                        }
+
+                        if(isa<MemNode>(Var) && LIVENESS)
                         {
 
                             GraphNode* newVar = Var->clone();
@@ -923,7 +931,7 @@ GraphNode* Graph::addInst(Value *v, int Instcounter, Function * func) {
                             StoreNodeMap[SI] = memNew;
                             Var->connect(memNew);
                             Var = memNew;
-                             nodes.insert(memNew);
+                            nodes.insert(memNew);
 
                         }
                         //  SI->dump();
@@ -935,21 +943,17 @@ GraphNode* Graph::addInst(Value *v, int Instcounter, Function * func) {
 
                         Var = new MemNode(USE_ALIAS_SETS ? AS->getValueSetKey(v) : 0, AS);
                         memNodes[USE_ALIAS_SETS ? AS->getValueSetKey(v) : 0] = Var;
-              if(printMem)          errs()<<"\nMEMNODE GENERATED  ---- : "<<Var->getName()<<"  "<< Var->getLabel() << " for ";
-               if(printMem)         v->dump();
-                        if(isa<GetElementPtrInst>(v))
+                        if(printMem)          errs()<<"\nMEMNODE GENERATED  ---- : "<<Var->getName()<<"  "<< Var->getLabel() << " for ";
+                        if(printMem)         v->dump();
 
-                        {
-                            //         errs()<<"Get Element Pointer where mem node generaed.: ";
-                            //       v->dump();
-                        }
-
-
-                    } else {  //if(!isa<Constant> (v))  .. dont generate the constant nodes.. makes it ugly plus adds no val.
+                    }
+                    else {  //if(!isa<Constant> (v))  .. dont generate the constant nodes.. makes it ugly plus adds no val.
 
 
                         Var = new VarNode(v);
                         varNodes[v] = Var;
+                        if(code) errs()<<"\n Creating var node for :";
+                        if(code) v->dump();
                     }
                     nodes.insert(Var);
                 }
@@ -961,9 +965,11 @@ GraphNode* Graph::addInst(Value *v, int Instcounter, Function * func) {
                 if (CI) {
                     Op = new CallNode(CI);
                     callNodes[CI] = Op;
+                    if(code) errs()<<"\n Creating call node";
 
                 } else {
                     Op = new OpNode(dyn_cast<Instruction> (v)->getOpcode(), v);
+                    if(code) errs()<<"\n Creating op node";
                 }
                 opNodes[v] = Op;
 
@@ -971,7 +977,7 @@ GraphNode* Graph::addInst(Value *v, int Instcounter, Function * func) {
                 if (hasVarNode)
                     Op->connect(Var);
 
-                if(isa<LoadInst>(v))
+                if(isa<LoadInst>(v) && LIVENESS)
                 {
                     //Getting all the defs of the load instruction ptr operand.. (if store considered as def..)
                     //Here get the recent stores to that var and add edges...!!
@@ -997,7 +1003,7 @@ GraphNode* Graph::addInst(Value *v, int Instcounter, Function * func) {
 
                         if(func)
                         {
-                           // Function* Func = parentBlock->getParent();
+                            // Function* Func = parentBlock->getParent();
                             FuncParamInfo* funcParam;
                             funcParam = functionParamMap[func];
                             if(funcParam)
@@ -1032,31 +1038,19 @@ GraphNode* Graph::addInst(Value *v, int Instcounter, Function * func) {
                 //Process Call Instruction seperately..
                 //For each param check if it is a pointer
                 //if it is a pointer then consider it as a new store op and add connections from all the previous live stores to the pointer.
+                // if(CI && LIVENESS)
                 if(CI)
                 {
-
-                  //  errs()<<"\n\n Processing  a Call instruction... .. ";
-                   // v->dump();
-                    //errs()<<" param : ";
-
-                   // Value *v1 = cast<User> (v)->getOperand(i);
-                    //v1->dump();
-                    //Operand = this->addInst(v1,Instcounter);
                     CallSite CS(CI);
-
                     CallSite::arg_iterator AI;
                     CallSite::arg_iterator EI;
 
-                //    errs()<<"\n\n CallSite arguments fo ..... : ";
-                    //CS.getCalledValue()->dump();
                     for (AI = CS.arg_begin(), EI = CS.arg_end(); AI != EI; ++AI) {
-                        //Parameters[i].second = TopDownGraph->addInst_new(*AI);
-                        //  Value * param = &*AI;
+
                         Use * useparam = &*AI;
                         Value * param =  useparam->get();
 
-                   //     param->dump();
-
+                        if(code) errs()<<"\n Creating nodes for call args.. node";
                         Operand = this->addInst(param,Instcounter,func);
                         BasicBlock* parentBlock = CI->getParent();
                         //Value* assignedVal = SI->getValueOperand();
@@ -1069,7 +1063,7 @@ GraphNode* Graph::addInst(Value *v, int Instcounter, Function * func) {
                             MemNode * memNew = dyn_cast<MemNode>(newVar);
                             memNew->defLoc->parentBlock = parentBlock;
                             //    errs()<<"\nFound a mem node..!! "<<parentBlock->getName() <<"\n";
-                        //    memNew->defLoc->assignedValue = assignedVal;
+                            //    memNew->defLoc->assignedValue = assignedVal;
                             memNew->defLoc->lineNumber = Instcounter;
                             memNew->defLoc->parentFunction = parentBlock->getParent();
                             memNew->defLoc->MemInst = param;//dyn_cast<Value*>(&SI);
@@ -1079,8 +1073,8 @@ GraphNode* Graph::addInst(Value *v, int Instcounter, Function * func) {
                             defSets.insert(memNew->defLoc);
                             RDSMap[param] = defSets;
                             // RDSMap[pointerOperand].insert(memNew->defLoc);
-                    //          errs()<<"\n  New node gen:    "<<memNew->getLabel()<<"   Line   :"<< Instcounter<<"\n";
-                      //        v->dump();
+                            //          errs()<<"\n  New node gen:    "<<memNew->getLabel()<<"   Line   :"<< Instcounter<<"\n";
+                            //        v->dump();
                             StoreNodeMap[param] = memNew;
                             Operand->connect(memNew);
                             Operand = memNew;
@@ -1106,58 +1100,43 @@ GraphNode* Graph::addInst(Value *v, int Instcounter, Function * func) {
                                 if(storeNode!=NULL)
                                 {
                                     storeNode->connect(memNew);
-                                  //  errs()<<"\nAdding Edge between store live map to arg "<< storeNode->getLabel()<<" -- "<<memNew->getLabel();
+                                    //  errs()<<"\nAdding Edge between store live map to arg "<< storeNode->getLabel()<<" -- "<<memNew->getLabel();
                                 }
                             }
 
                             memNew->connect(Op);
-                   //          errs()<<"\nAdding Edge between new node to call node.. "<< memNew->getLabel()<<" -- "<<Op->getLabel();
+                            //          errs()<<"\nAdding Edge between new node to call node.. "<< memNew->getLabel()<<" -- "<<Op->getLabel();
 
                             callParamNodeMap[&CS][param] = memNew;
                             //update the callsite info struct here..
                             CallSiteMap * paramMap =CallSiteParams[CI];
                             if(!paramMap)
-                                    paramMap = new CallSiteMap();
+                                paramMap = new CallSiteMap();
                             paramMap->ArgNodeMap[param] = memNew;
                             paramMap->cs = &CS;
                             paramMap->CI = CI;
                             CallSiteParams[CI] = paramMap;
-
-                   /*         errs()<<"\n\n++++++++++++++++++++++ Callmap updated for:"<<callParamNodeMap[&CS].size()<<"  "<<callParamNodeMap.size();
-                            paramMap->CI->dump();
-                            param->dump();
-                            errs()<<"  " <<paramMap->ArgNodeMap[param]->getLabel();
-                            errs()<<"\n++++++++++++++++++++++";
-                            */
-
                         }
-                       else if (Operand != NULL)
+                        else if (Operand != NULL)
                         {
-                        Operand->connect(Op);
-                     //   errs()<<"\nAdding Edge between "<< Operand->getLabel()<<" -- "<<Op->getLabel();
-                        callParamNodeMap[&CS][param] = Operand;
+                            Operand->connect(Op);
+                            //   errs()<<"\nAdding Edge between "<< Operand->getLabel()<<" -- "<<Op->getLabel();
+                            callParamNodeMap[&CS][param] = Operand;
 
 
-                        CallSiteMap * paramMap =CallSiteParams[CI];
-                        if(!paramMap)
+                            CallSiteMap * paramMap =CallSiteParams[CI];
+                            if(!paramMap)
                                 paramMap = new CallSiteMap();
 
-                        paramMap->ArgNodeMap[param] = Operand;
-                        paramMap->cs = &CS;
-                        paramMap->CI = CI;
-                        CallSiteParams[CI] = paramMap;
-/*
-                        errs()<<"\n\n++++++++++++++++++++++ Callmap updated for:"<<callParamNodeMap[&CS].size()<<"  "<<callParamNodeMap.size();
-                        CS.getInstruction()->dump();
-                        param->dump();
-                         errs()<<" " <<Operand->getLabel();
-                        errs()<<"\n++++++++++++++++++++++";
-                        */
+                            paramMap->ArgNodeMap[param] = Operand;
+                            paramMap->cs = &CS;
+                            paramMap->CI = CI;
+                            CallSiteParams[CI] = paramMap;
                         }
                     }
+
+
                 }
-
-
 
                 //Connect the operands to the OpNode
                 for (unsigned int i = 0; i < cast<User> (v)->getNumOperands(); i++) {
@@ -1171,13 +1150,17 @@ GraphNode* Graph::addInst(Value *v, int Instcounter, Function * func) {
                     {
                         //handled above.
                         continue;
-                       }
+                    }
+                    if(isa<AllocaInst> (v))
+                    {
+                        continue;
+                    }
 
-                        Value *v1 = cast<User> (v)->getOperand(i);
-                        Operand = this->addInst(v1,Instcounter,func);
+                    Value *v1 = cast<User> (v)->getOperand(i);
+                    Operand = this->addInst(v1,Instcounter,func);
 
-                        if (Operand != NULL)
-                            Operand->connect(Op);
+                    if (Operand != NULL)
+                        Operand->connect(Op);
 
 
                 }
@@ -1275,6 +1258,33 @@ GraphNode* Graph::addInst_new(Value *v) {
     return NULL;
 }
 
+
+GraphNode* Graph::addGlobalVal(GlobalVariable *gv)
+{
+    GraphNode *Var;
+    Value *v = gv;
+
+    if ((!isa<Constant> (v)) && isMemoryPointer(v)) {
+        Var = new MemNode(USE_ALIAS_SETS ? AS->getValueSetKey(v) : 0, AS);
+        memNodes[USE_ALIAS_SETS ? AS->getValueSetKey(v) : 0] = Var;
+        if(printMem)          errs()<<"\nMEMNODE GENERATED  ---- : "<<Var->getName()<<"  "<< Var->getLabel() << " for ";
+        if(printMem)         v->dump();
+    } else {  //if(!isa<Constant> (v))  .. dont generate the constant nodes.. makes it ugly plus adds no val.
+        Var = new VarNode(v);
+        varNodes[v] = Var;
+    }
+
+    //REplacing with simple add var node to remove memory segmentation
+    Var = new VarNode(v);
+    varNodes[v] = Var;
+
+    nodes.insert(Var);
+
+    return Var;
+}
+
+
+
 void Graph::addEdge(GraphNode* src, GraphNode* dst, edgeType type) {
 
     nodes.insert(src);
@@ -1287,15 +1297,13 @@ void Graph::addEdge(GraphNode* src, GraphNode* dst, edgeType type) {
 bool Graph::isValidInst(Value *v) {
 
     if ((!includeAllInstsInDepGraph) && isa<Instruction> (v)) {
-
         //List of instructions that we don't want in the graph
         switch (cast<Instruction>(v)->getOpcode()) {
-
-        // case Instruction::Br:
-        //  case Instruction::Switch:
-        // case Instruction::Ret:
-        //  case Instruction::Call:
-        return true;
+        case Instruction::Br:
+            //  case Instruction::Switch:
+            //  case Instruction::Ret:
+            // case Instruction::Call:
+            return true;
 
         }
 
@@ -1316,6 +1324,7 @@ bool llvm::Graph::isMemoryPointer(llvm::Value* v) {
 //Return NULL if the operand is not inside map.
 GraphNode* Graph::findNode(Value *op) {
 
+    //GraphNode* ConstNode;
     if ((!isa<Constant> (op)) && isMemoryPointer(op)) {
         int index = USE_ALIAS_SETS ? AS->getValueSetKey(op) : 0;
         if (memNodes.count(index))
@@ -1323,10 +1332,16 @@ GraphNode* Graph::findNode(Value *op) {
     } else {
         if (varNodes.count(op))
             return varNodes[op];
+        else if (opNodes.count(op))
+            return opNodes[op];
+        //else if(nodes.count(op))
+        //    return ;
     }
 
     return NULL;
 }
+
+
 
 std::set<GraphNode*> Graph::findNodes(std::set<Value*> values) {
 
@@ -1585,6 +1600,10 @@ std::set<GraphNode*> llvm::Graph::getDepValues(std::set<llvm::Value*> sources,
     std::set<GraphNode*> sourceNodes = findNodes(sources);
     std::list<GraphNode*> worklist;
     std::map<GraphNode*, edgeType> neigh;
+
+    //NT: debug..
+    // errs()<<"Source nodes count.  : "<<sourceNodes.size();
+
     for (std::set<GraphNode*>::iterator i = sourceNodes.begin(), e =
          sourceNodes.end(); i != e; ++i) {
         worklist.push_back(*i);

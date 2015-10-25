@@ -5,6 +5,12 @@
 
 using namespace llvm;
 
+
+
+
+
+
+
 STATISTIC(NumFuncitons, "Number of functions");
 STATISTIC(NumCalls, "Number of call sites");
 
@@ -61,7 +67,7 @@ bool BottomUpPass::runOnSCC(CallGraphSCC &SCC)
       if (!F)
       {
           //Check waht kind of call it is:
-          errs()<<"\nCallGRaph node dump -- ";
+        //  errs()<<"\nCallGRaph node dump -- ";
     //      (*I)->dump();
           continue;
       }
@@ -153,14 +159,17 @@ bool CallGraphWrapper::runOnModule(Module &M) {
 
     DEBUG(errs()<<"Address Taken Functions: "<< addressTaken.size());
 
-    for(std::set<Function*>::iterator FI = addressTaken.begin();FI!=addressTaken.end();++FI)
+  /*
+   * Print Address Taken..uncomment to see results.
+   *
+   *    for(std::set<Function*>::iterator FI = addressTaken.begin();FI!=addressTaken.end();++FI)
     {
         errs()<<"\nAddress Taken For: "<<(*FI)->getName();
         errs()<<" Type:  ";
         (*FI)->getType()->dump();
        // Function * f;
 
-    }
+    } */
 
 
     //Consider the root node as external node if you dont find the main functions to start with.
@@ -180,7 +189,7 @@ bool CallGraphWrapper::runOnModule(Module &M) {
         }
         else
         {
-            errs()<<"\nFunction in call graph  :"<<F->getName();
+         //   errs()<<"\nFunction in call graph  :"<<F->getName();
             if(F->getName()=="main")
                 RootNode =SCC[i];
         }
@@ -288,7 +297,7 @@ bool CallGraphWrapper::runOnModule(Module &M) {
 
 
 //Print Unresolved Calls:
-
+/*
       errs()<<"\n Unresolved CAlls :";
       for(std::set<CallSite>::iterator callS = unResolved.begin();callS != unResolved.end();++callS)
       {
@@ -302,10 +311,10 @@ bool CallGraphWrapper::runOnModule(Module &M) {
         (*callS)->dump();
       }
 
-
+*/
 
       //Print REsolved Calls:
-
+/*
 for(std::map<CallSite, std::vector<Function*> >::iterator mapIt = IndMap.begin(); mapIt != IndMap.end(); ++mapIt)
 {
     errs()<<"\n";
@@ -344,9 +353,9 @@ for(std::map<CallSite, std::vector<Function*> >::iterator mapIt = IndMap.begin()
         errs()<<"\nFor # arguments : "<<i<<" calls made "<< callto[i];
     }
  errs()<<"\n\n\n";
+ */
 
  
-//>>>>>>>>>>>>>>>>>>>>>> BEGIN FRANK CALL GRAPH <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 
 
@@ -390,41 +399,15 @@ for(std::map<CallSite, std::vector<Function*> >::iterator mapIt = IndMap.begin()
       			}
     		}
 
-		// process (print) the tokens
-	    	for (int i = 0; i < n; i++) // n = #of tokens
-		{
-	      		//errs() << "Token[" << i << "] = " << token[i] << "\n";
-		}
-
-	
 	}
 	
-
 	const std::string start(token[1]);
 	const std::string end(token[2]);
-	const std::string max_hops_string(token[3]);
-	const std::string min_hops_string(token[4]);
-
-	const int max_hops = atoi(max_hops_string.c_str());
-	const int min_hops = atoi(min_hops_string.c_str());
-
-
-	errs()<<"Start source: "<<start<<"\nEnd sink: "<<end<<"\nMin Hops: "<<min_hops<<"\nMax Hops: "<<max_hops<<"\n";
 	
 	PathSet* pathSet;
 	//Pass source and sink to find all paths
-	findAllPaths(pathSet, start, end, max_hops, min_hops);
+	findAllPaths(pathSet, start, end);
 
-
-
-
-//>>>>>>>>>>>>>>>>>>>>>>>> END FRANK CALL GRAPH <<<<<<<<<<<<<<<<<<<<<<<<<<<<
-
-
-  //toDot(RootNode,*CG,"CallGTest.dot");
-
-
- //Free the Call Graph
    
 
 
@@ -432,238 +415,22 @@ for(std::map<CallSite, std::vector<Function*> >::iterator mapIt = IndMap.begin()
 }
 
 
-void CallGraphWrapper::callGraphPaths(PathSet& pathSet,
-					Path& visited,
-					const std::string& end, 
-					const int& max_hops, 
-					const int& min_hops)
-{
-
-	
-
-
-	// Gives us our starting node to search neighbors
-    	CallGraphNode* back = visited.back();
-
-
-
-	std::map<CallGraphNode*, int> DefinedNodes;
-	std::map<int, CallGraphNode*> NodeMap;
-
-	map<int,int> processed;
-    	set<pair<CallGraphNode*,int> > beginPair;
-    	beginPair.insert(pair<CallGraphNode*,int>(back,-1));
-    	vector<pair<WeakVH,CallGraphNode*> > CallRecords;
-    	int currNode;
-
-	set<pair<CallGraphNode*,int> >::iterator wlItem = beginPair.begin();
-        CallGraphNode * node = (*wlItem).first;
-	
-
-	//errs()<<"\nCurrent Top Node in Graph: "<< getNodeLabel(node)<<"\n";
-
-	if (DefinedNodes.count(node) == 0) {
-		DefinedNodes[node] = nodeCount;
-		NodeMap[nodeCount] = node;
-		currNode = nodeCount;
-
-		nodeCount++;
-
-		if (Function *Func = (node)->getFunction()) {
-
-			//errs()<<" Function : " <<node->getFunction()->getName()<<"\n";
-
-			for(vector<pair<WeakVH, CallGraphNode*> >::iterator crIt = (node)->begin();
-					crIt != (node)->end(); 
-					crIt++)
-			{
-				
-				
-
-				if(CallGraphNode* cgNode = (*crIt).second)
-				{
-					
-					if (!cgNode->empty() && !ContainsNode(visited, cgNode)){
-					
-						//errs()<<"\tCalled Function : "<<cgNode->getFunction()->getName()<<"\n";					
-						//errs()<<"\tSize of path: "<<visited.size()<<"\n";
-
-						// Check if we have reached the desired end node
-						if(end == cgNode->getFunction()->getName())
-						{
-
-							// Add node to path
-							visited.push_back( cgNode );
-
-
-							// Get hop count for this path
-							const int size = (int) visited.size();
-							const int hops = size - 1;
-
-							// Add current path to path set
-							Path path(visited.begin(), visited.begin() + size);							
-
-							for( std::vector<CallGraphNode*>::const_iterator node_it = visited.begin();
-          							node_it != visited.end();
-          							node_it++ )
-    							{ 
-								//errs()<<"\nNodes collected: "<<(*node_it)->getFunction()->getName(); 
-
-							}
-				
-							pathSet.push_back(path);
-							//errs()<<"\nPathset size"<<pathSet->size();
-							
-							// Remove only the last node for continued search (backtrack)
-							visited.erase( visited.begin() + hops);
-						
-							// Not necessary, but will optimze to remove repetitive paths.							
-							break;
-						}
-						else
-						{
-							// If its not the end, check the hop count and continue if in bounds
-
-							// Get hop count for this path
-							const int size = (int) visited.size();
-							const int hops = size - 1;
-
-							
-							
-							// Only if we are in bounds continue further down
-							if ( (max_hops < 1) || (hops <= max_hops))
-							{
-								//errs()<<"Path Size "<<size<<" Hop "<<hops<<"Max Hops "<<max_hops<<"\n";
-								visited.push_back( cgNode );
-								callGraphPaths(pathSet, visited, end, max_hops, min_hops);
-							}
-							//else
-							//{
-							//	visited.erase( visited.begin() + hops);
-							//}
-
-						}
-					}
-				}
-			}
-
-			/////////////////////////////////// BEGIN INDIRECT CALL STUFF //////////////////////////////////////
-
-				//If the function contains any indirect callsites the add the targets to worklist..
-
-
-				//errs()<<"\nIndirect call function: "<<(node)->getFunction()->getName()<<"\n";
-                                vector<CallSite> callSitesinFunc = FunctiontoIndCalls[Func];
-                                for(vector<CallSite>::iterator csIt = callSitesinFunc.begin();
-					csIt != callSitesinFunc.end();
-					++csIt)
-                                {
-                                  	//get the target functions from indMAp
-                                        std::vector<Function*> calledF = IndMap[*csIt];
-                                        for(std::vector<Function*>::iterator fs = calledF.begin();
-						fs != calledF.end();
-						++fs)
-                                        {
-                                            	//For each called function get/create the corresponding callgraph node and add in worklist
-                                            	//errs()<<"INDIRECT CALL\n"<<(*fs)->getName();
-                                            	CallGraphNode* cgNode = getDefinedCallGraphNode(*fs);
-		
-					
-						if (!cgNode->empty() && !ContainsNode(visited, cgNode)){
-					
-							//errs()<<"\nCalled Function : "<<cgNode->getFunction()->getName();					
-							//errs()<<"\nSize of path: "<<visited.size();
-
-							// Check if we have reached the desired end node
-							if(end == cgNode->getFunction()->getName())
-							{
-
-								// Add node to path
-								visited.push_back( cgNode );
-
-
-								// Get hop count for this path
-								const int size = (int) visited.size();
-								const int hops = size - 1;
-
-								// Add current path to path set
-								Path path(visited.begin(), visited.begin() + size);							
-	
-								for( std::vector<CallGraphNode*>::const_iterator node_it = visited.begin();
-          								node_it != visited.end();
-          								node_it++ )
-    								{ 
-									//errs()<<"\nNodes collected: "<<(*node_it)->getFunction()->getName(); 
-
-								}
-				
-								pathSet.push_back(path);
-								//errs()<<"\nPathset size"<<pathSet->size();
-							
-								// Remove only the last node for continued search (backtrack)
-								visited.erase( visited.begin() + hops);
-								break;
-							}
-							else
-							{
-								// If its not the end, check the hop count and continue if in bounds
-
-								// Get hop count for this path
-								const int size = (int) visited.size();
-								const int hops = size - 1;
-							
-								// Only if we are in bounds continue further down
-								if ( (max_hops < 1) || (hops <= max_hops) )
-								{
-
-									visited.push_back( cgNode );
-									callGraphPaths(pathSet, visited, end, max_hops, min_hops);
-								}
-								//else
-								//{
-								//	visited.erase( visited.begin() + hops);
-								//}
-							}
-					    	}
-					}
-				}
-				
-			//errs()<<" End of Function : " <<node->getFunction()->getName()<<"\n";		
-				//////////////////////////// END INDIRECT CALL STUFF /////////////////////////////////////
-				
-			
-		}
-	}
-
-	int parent = (*wlItem).second;
-	currNode = DefinedNodes[node];
-
-	if(NodeMap.count(parent) != 0 && (parent!=currNode) && (processed[parent]!=currNode))
-	{
-		processed[parent] = currNode;
-	}
-
-	beginPair.erase(wlItem);
-	int n = (int) visited.size() - 1;
-	visited.erase( visited.begin() + n);
-	
-
-
-}
-
 
 void CallGraphWrapper::findAllPaths(PathSet* pathSet,
 					const std::string& start,
-					const std::string& end,
-					const int& max_hops,
-					const int& min_hops)
+					const std::string& end)
 {
 
-	//Consider the root node as external node if you dont find the main functions to start with.
-    	CallGraphNode* RootNode = CG->getCallsExternalNode();
+
+    	CallGraphNode* sinkNode;
+	Function *sinkFunction; // REMOVE
+	instructionCallSite sinkCSStruct;
+	int sinkFound = 0;
 
     	bool externalFunction;
-    	//Traversal of Call Graph.
+
+
+    	//Initial Traversal of the call graph to find the sink.
     	for (scc_iterator<CallGraph*> I = scc_begin(CG); !I.isAtEnd(); ++I) {
       		const std::vector<CallGraphNode *> &SCC = *I;
 
@@ -677,108 +444,594 @@ void CallGraphWrapper::findAllPaths(PathSet* pathSet,
         		else
         		{
             			//errs()<<"\nFunction in call graph  :"<<F->getName();
-            			if(F->getName()==start)
-                			RootNode =SCC[i];
+            			if(F->getName()==end)
+				{
+					sinkFound = 1;
+                			sinkNode =SCC[i];
+					sinkFunction = F; // REMOVE
+
+					sinkCSStruct.function = F;
+					sinkCSStruct.functionName = F->getName();
+					sinkCSStruct.callInst = NULL;				
+
+					
+				}
         		}
       		}
     	}
 
+
+	// Check to make sure the sink function was found within the program.
+	if (sinkFound == 0)
+	{
+		errs()<<"***ERROR: The sink specified was not found within the program.\n";
+		return;
+	}
+
+
 	//Test printing out node name
-	errs()<<"RootNode: "<<getNodeLabel(RootNode)<<"\n";
+	errs()<<"Sink Node: "<<getNodeLabel(sinkNode)<<"\n";
+
+
+
+
+
+	// Setup reverse mapping of indirect calls
+
+	errs()<<"Running Reverse Mapping\n";
+	
+	IndCallerList indirectCallerList;
+
+	//struct IndCallforFunction tempStruct;
+	//tempStruct.name = sinkNode->getFunction()->getName();
+
+
+	//indirectCallerList->push_back(tempStruct);
+	
+
+	createReverseMapping(&indirectCallerList);
+
+
+	for(IndCallerList::iterator currCallee = indirectCallerList.begin(); 
+							currCallee != indirectCallerList.end(); 
+							++currCallee)
+	{
+							
+		//errs()<<"Name of Callee: "<<(*currCallee).name<<"\n";
+
+		for(std::vector<Function*>::iterator func = (*currCallee).functionList.begin();
+					func != (*currCallee).functionList.end();
+					func ++)
+		{
+			//errs()<<"	Name of caller: "<<(*func)->getName()<<"\n";
+		}				
+	}
+	
+
+
+
+
+
 
 
 	// Create data structure that will hold current path visited. Add start node to current path.
 	Path visited;
-	visited.push_back( RootNode );
-
+	//visited.push_back( sinkFunction );
+	visited.push_back(sinkCSStruct);	
+	
+	// Create data structure to hold a list of paths. We will only add a path to the pathset when the source is reached.
 	PathSet pathSets;
-	PathSet paths;
-	//pathSets.push_back(visited);
 
-	errs()<<"Size: "<<paths.size()<<"\n";
-	errs()<<"Size: "<<pathSets.size()<<"\n";
 
-	// This is the recursive depth-first search.
-	callGraphPaths(pathSets, visited, end, max_hops, min_hops);
 
-	errs()<<"Number of total paths: "<<pathSets.size()<<"\n";
+	// Enter a recursive function to gather all of the paths from source to sink.
+	OtherFunction(pathSets, visited, start, &indirectCallerList);
+
+	errs()<<"Make it through entire path finding algorithm.\n";
+	// For each function on each path, gather a list of calls for context sensitivity.
+
+
+
+
 	
-	int i = 0;
-	
+	std::vector<Function*> functionList;
+	functionList.push_back( sinkFunction );
 
 	for (std::vector<Path>::iterator I = pathSets.begin();
 	I != pathSets.end();
 		I++)
 	{	
-
-		
-		Path uniqueVisited;
-		//errs()<<"Size :"<< (*I).size()<<"\n";
-		for(std::vector<CallGraphNode*>::const_iterator node = (*I).begin(); node != (*I).end(); node++)
+		for(std::vector<instructionCallSite>::const_iterator callSite = (*I).begin(); callSite != (*I).end(); callSite++)
 		{	
-			uniqueVisited.push_back( (*node) );
-		
-			errs()<<i<<" : Function on Path: "<<(*node)->getFunction()->getName()<<"\n";
+			Function* func = (*callSite).function;
+			if (!ContainsFunction(functionList, (func)))
+			{
+				functionList.push_back(func);
+			}
+
 		}
-
-		errs()<<"\n\n";
-		
-		uniquePath = &uniqueVisited;
-
-
-		/////////////////// MODIFY INDICES TO SEARCH FOR UNIQUE PATHS HERE ///////////////////////////
-
-		//if (i == 0 || i == 1 || i == 2 || i == 12|| i == 13 || i == 14 || i == 15 || i == 19 || i == 20 || i == 21 || i == 22) {
-		//	paths.push_back(uniqueVisited);
-
-		//}
-
-		i++;
-
 	}
-
-	errs()<<"\n";
-
-
-	uniquePaths = &paths;
 	
-	callingPath = &paths;
-	errs()<<"\nNumber of unique paths:" <<callingPath->size()<<"\n";
 
-	////////Test Printing Unique Paths//////////
-		
-	for (std::vector<Path>::iterator I = callingPath->begin();
-	I != callingPath->end();
+
+	errs()<<"Successfully gathered a full list of functions.\n";
+
+	/* 	The next stage is to compile the gathered information into a human meaningful
+		format. We will output two sets of output. The first is a list of each first level
+		function and all context sensitive calls within.
+
+		The second format is a context sensitive path output. Where each level of depth
+		is partitioned through the use of (). For example assume a call path:
+
+		function 1 -> function 2 -> function 3.
+
+		This would be displayed as (function 1 (what function 1 calls) function 2 (...)...)
+
+		Based on the k-step parameter the depth can very.
+
+		Such as:
+
+		(function 1 (subcall 1 (subsubcall 1) subcall 2 (...) ...) function 2 (...) ...)
+	*/
+
+	// Output a list of all context sensitive calls to a file.
+	printContextSensitiveCalls(functionList);
+
+	// Output a list of all context sensitive paths to a file.
+	printContextSensitivePaths(pathSets);
+    callPathSets = pathSets;
+	
+
+
+	// Test printing out the identified call paths.
+	int count = 0;
+	errs()<<"Number of paths: "<<pathSets.size()<<"\n";
+	for (std::vector<Path>::iterator I = pathSets.begin();
+	I != pathSets.end();
 		I++)
 	{	
-		for(std::vector<CallGraphNode*>::const_iterator node = (*I).begin(); node != (*I).end(); node++)
+		errs()<<"Path "<<++count<<": Size: "<<(*I).size()<<"\n";
+		for(std::vector<instructionCallSite>::const_iterator callSite = (*I).begin(); callSite != (*I).end(); callSite++)
 		{	
-			errs()<<" : Function on Path: "<<(*node)->getFunction()->getName()<<"\n";
+			errs()<<" : Function on Path: "<<(*callSite).functionName<<"\n";
 		}
-		errs()<<"\n\n";	
+		errs()<<"\n\n";
 	}
-	
 }
 
-bool CallGraphWrapper::ContainsNode( Path& nodes, CallGraphNode* node)
-{
 
-	for (std::vector<CallGraphNode*>::iterator I = nodes.begin();
-		I != nodes.end();
-		I++)
+
+void CallGraphWrapper::OtherFunction(PathSet& pathSet,
+					Path& visited,
+					const std::string& end,
+					IndCallerList* indirectCallerList)
+{
+	instructionCallSite calleeSite;
+	calleeSite = visited.back();
+	Function* back = calleeSite.function;
+
+
+	for (Value::user_iterator i = back->user_begin(), e = back->user_end(); i != e; ++i)
 	{
-		CallGraphNode* cgNode = (*I);
-		if((*I)->getFunction()->getName() == node->getFunction()->getName()) return true;
+
+		errs()<<"Searching uses for function: "<<back->getName()<<"\n";
+
+		if (Instruction* use = dyn_cast<Instruction>(*i)) {
+			
+
+
+			BasicBlock *bb = use->getParent();
+			Function *func = bb->getParent();
+			errs()<<" Use for: "<<back->getName()<<": Instruction Name: "<<func->getName()<<" : : "<<use<<"\n";
+
+
+			if (!isOnPath(visited, func))
+			{
+				/*
+				// Testing Purposes Only
+				for(std::vector<Function*>::const_iterator f = visited.begin(); 
+									   f != visited.end(); 
+									   f++)
+				{	
+
+		
+					errs()<<" : Function on Path: "<<(*f)->getName()<<"\n";
+				}
+				errs()<<" : Function on Path: "<<func->getName()<<"\n\n";
+				
+				*/
+				if (func->getName() == end) {
+
+					instructionCallSite tempStruct;
+
+					tempStruct.functionName = func->getName();
+					tempStruct.function = func;
+					tempStruct.callInst = use;
+
+
+					//visited.push_back(func); REMOVE
+					visited.push_back( tempStruct );
+
+					// Get hop count for this path
+					const int size = (int) visited.size();
+					const int hops = size - 1;
+
+					// Add current path to path set
+					Path path(visited.begin(), visited.begin() + size);
+
+					pathSet.push_back(path);
+
+					// Remove only the last node for continued search (backtrack)
+					visited.erase( visited.begin() + hops);
+
+
+				}		
+				else 
+				{	
+					instructionCallSite tempStruct;
+
+					tempStruct.functionName = func->getName();
+					tempStruct.function = func;
+					tempStruct.callInst = use;
+
+					
+					//visited.push_back(func); REMOVE
+					visited.push_back( tempStruct );
+
+					// Get hop count for this path
+					const int size = (int) visited.size();
+					const int hops = size - 1;	
+	
+					OtherFunction(pathSet, visited, end, indirectCallerList);
+					
+					visited.erase( visited.begin() + hops);
+				}
+			}
+     		}	
+	}
+
+
+	// Handle Indirect Callers Here.
+
+	for(IndCallerList::iterator currCallee = indirectCallerList->begin(); 
+							currCallee != indirectCallerList->end(); 
+							++currCallee)
+	{
+							
+		if( back->getName() == (*currCallee).name )
+		{
+			errs()<<"Match found: "<<back->getName()<<"     "<<(*currCallee).name<<"\n";
+				//errs()<<"Name of current caller: "<<Func->getName()<<"Name of current callee: "<<(*currCallee).name<<"\n";
+			//	(*currCallee).functionList.push_back(Func);
+			//}
+
+			for(std::vector<Function*>::iterator func = (*currCallee).functionList.begin();
+					func != (*currCallee).functionList.end();
+					func ++)
+			{
+				Function* function = (*func);
+				if (!isOnPath(visited, function))
+				{
+					
+					if (function->getName() == end) {
+
+						instructionCallSite tempStruct;
+						
+						tempStruct.functionName = function->getName();
+						tempStruct.function = function;
+						tempStruct.callInst = NULL;
+					
+						//visited.push_back(func); REMOVE
+						visited.push_back( tempStruct );
+
+						// Get hop count for this path
+						const int size = (int) visited.size();
+						const int hops = size - 1;
+
+						// Add current path to path set
+						Path path(visited.begin(), visited.begin() + size);
+
+						pathSet.push_back(path);
+
+						// Remove only the last node for continued search (backtrack)
+						visited.erase( visited.begin() + hops);
+
+
+					}		
+					else 
+					{	
+					
+						instructionCallSite tempStruct;
+					
+						tempStruct.functionName = function->getName();
+						tempStruct.function = function;
+						tempStruct.callInst = NULL;
+					
+						//visited.push_back(func); REMOVE
+						visited.push_back( tempStruct );
+
+						// Get hop count for this path
+						const int size = (int) visited.size();
+						const int hops = size - 1;	
+	
+						OtherFunction(pathSet, visited, end, indirectCallerList);
+					
+						visited.erase( visited.begin() + hops);
+					}
+
+					//errs()<<"	Name of caller: "<<(*func)->getName()<<"\n";
+				}
+			}
+
+		}				
+	}
+
+
+
+
+
+
+}
+
+/**
+
+	A simple check as to whether the passed in function resides in the passed in path.
+
+**/
+
+bool CallGraphWrapper::ContainsFunction( std::vector<Function*> functionList, Function* func)
+{
+	for (std::vector<Function*>::iterator I = functionList.begin();
+		I != functionList.end();
+		I++) 
+	{
+		Function* funcNode = (*I);
+		if(funcNode->getName() == func->getName()) return true;
 	}
 
 
 	return false;
+}
+
+
+bool CallGraphWrapper::isOnPath( Path& functionStructs, Function* func)
+{
+	for (std::vector<instructionCallSite>::iterator I = functionStructs.begin();
+		I != functionStructs.end();
+		I++)
+	{
+		Function* funcNode = (*I).function;
+		if(funcNode->getName() == func->getName()) return true;
+	}
+
+
+	return false;
+}
+
+
+
+/**
+
+	This function will create a mapping from all callee's to possible indirect caller's.
+
+	This is a two step process. First go through all functions in the program and initialize a struct
+	representing a callee for that function.
+
+	Then, we traverse the call graph searching for all indirect calls for each function. For each indirect
+	call add the caller to the respective callee's list of possible indirect callers within its 
+	respective callee structure.
+
+	Return the list of callee structs at the end.
+
+**/
+void CallGraphWrapper::createReverseMapping(IndCallerList* indirectCallerList)
+{
+
+	//IndCallerList newList;
+	// Initialize a struct to hold indirect callers for each function and add to vector.
+
+	for (scc_iterator<CallGraph*> I = scc_begin(CG); !I.isAtEnd(); ++I) 
+
+	{
+      		const std::vector<CallGraphNode *> &SCC = *I;
+      		for (unsigned i = 0, e = SCC.size(); i != e; ++i) 
+		{
+
+        		
+        		if (Function *F = SCC[i]->getFunction()) {
+          			IndCallerforCallee tempStruct;
+				tempStruct.name = F->getName();
+				//errs()<<"Function name of current callee: "<<tempStruct.name<<"\n";
+	
+				indirectCallerList->push_back(tempStruct);                                                 /////////////////////FIX ME//////////
+				//errs()<<newList.size()<<"\n";
+			}
+      		}
+    	}
+
+	//errs()<<"Created Structs \n";
+
+	// Traverse through all callgraph nodes searching for indirect calls. For each indirect call
+	// add the caller to the callee's list of known indirect callers
+    	for (scc_iterator<CallGraph*> I = scc_begin(CG); !I.isAtEnd(); ++I) 
+
+	{
+      		const std::vector<CallGraphNode *> &SCC = *I;
+
+      		for (unsigned i = 0, e = SCC.size(); i != e; ++i) 
+
+		{
+
+			CallGraphNode *node = SCC[i];
+
+			if (Function *Func = (node)->getFunction()) {
+
+				//errs()<<"\nIndirect call function: "<<(node)->getFunction()->getName()<<"\n";
+                               	vector<CallSite> callSitesinFunc = FunctiontoIndCalls[Func];
+                               	for(vector<CallSite>::iterator csIt = callSitesinFunc.begin();
+					csIt != callSitesinFunc.end();
+					++csIt)
+                                {
+
+					// Based on the indirect mapping, get the target functions
+                                        std::vector<Function*> calledF = IndMap[*csIt];
+                                        for(std::vector<Function*>::iterator fs = calledF.begin();
+						fs != calledF.end();
+						++fs)
+                                        {
+					
+						// Any target in this loop is an indirect function.
+						// For each function add the caller to the callee's list of known indirect callers.
+
+						// First find the struct for the callee.
+						
+						for(IndCallerList::iterator currCallee = indirectCallerList->begin(); 
+							currCallee != indirectCallerList->end(); 
+							++currCallee)
+						{
+							
+							if( (*fs)->getName() == (*currCallee).name )
+							{
+								if(!ContainsFunction((*currCallee).functionList, Func))
+								{
+                                //	errs()<<"Name of current caller: "<<Func->getName()<<"Name of current callee: "<<(*currCallee).name<<"\n";
+									(*currCallee).functionList.push_back(Func);
+								}
+							}				
+						}
+					}
+				}
+			}
+      		}
+    	}
+
+	//return indirectCallerList;
 
 }
-						
+
+
+PathSet CallGraphWrapper::getCallPaths()
+{
+    //return callPathSets;
+    return callPathsAll;
+}
+
+void CallGraphWrapper::printContextSensitiveCalls(std::vector<Function*> functionList)
+{
+	
+
+	ofstream output_fo;
+	output_fo.open ("context-sensitive-calls.out");
+
+	// Output a list of all context sensitive calls to a file.
+	for (std::vector<Function*>::const_iterator func = functionList.begin();
+						    func != functionList.end();
+						    func++)
+	{
+	
+		output_fo <<"Function: ";
+		const std::string s = (*func)->getName();
+		output_fo <<s;
+		output_fo <<"\n";
+		for (Function::iterator BB = (*func)->begin(), endBB = (*func)->end(); BB != endBB; ++BB) {
+
+			for (BasicBlock::iterator I = BB ->begin(), endI = BB->end(); I != endI; ++I){
+
+				if (CallInst* callInst = dyn_cast<CallInst>(&*I)) {
+					
+					
+					if (callInst->getCalledFunction() != NULL)
+					{
+						const std::string ss = callInst->getCalledFunction()->getName();
+						output_fo << " Calling: ";
+						output_fo << ss; 
+						output_fo << "\n";
+					}
+				}
+			}
+		}
+		output_fo <<"\n";
+	}
+	
+	output_fo.close();
+	
+}
+
+
+void CallGraphWrapper::printContextSensitivePaths(PathSet pathSets)
+{
+	
+	ofstream output_fo;
+	output_fo.open ("context-sensitive-paths.out");
+
+
+    //callPathsAll
+    //pathSets.
 
 
 
+	for (std::vector<Path>::iterator I = pathSets.begin();
+	I != pathSets.end();
+		I++)
+	{
+		Path currPath = (*I);
+        // = (*I);
+         Path currPathnew;
+		std::reverse(currPath.begin(), currPath.end());
+
+        output_fo<<"( ";
+
+		for(std::vector<instructionCallSite>::const_iterator callSite = currPath.begin(); callSite != currPath.end(); callSite++)
+		{	
+		
+            Function* func = (*callSite).function;
+            currPathnew.push_back(*callSite);
+
+			const std::string funcName = (*callSite).functionName;
+			output_fo<<funcName;
+            output_fo<<" ( ";
+
+			for (Function::iterator BB = func->begin(), endBB = func->end(); BB != endBB; ++BB) {
+				
+				for (BasicBlock::iterator I = BB ->begin(), endI = BB->end(); I != endI; ++I){
+
+					if (CallInst* callInst = dyn_cast<CallInst>(&*I)) {
+					
+						if (callInst->getCalledFunction() != NULL)
+						{
+							if (callInst != (*callSite).callInst)
+							{
+                                //NT: Added the function in the call path for processing.
+                                instructionCallSite newCall;
+                                newCall.callInst = callInst;
+                                newCall.function = callInst->getCalledFunction();
+                                newCall.functionName = callInst->getCalledFunction()->getName();
+                                currPathnew.push_back(newCall);
+
+								const std::string ss = callInst->getCalledFunction()->getName();
+								output_fo << ss; 
+                                output_fo << " ";
+							}
+
+							else {
+								break;
+							}
+						}
+					}
+				}
+			}
+
+			output_fo<<") ";
+		}
+		
+        callPathsAll.push_back(currPathnew);
+		output_fo <<")\n";
+
+	}
+
+	output_fo.close();
+	
+}						
 
 
 void CallGraphWrapper::toDot(CallGraphNode* RootNode, CallGraph CG, string fileName)

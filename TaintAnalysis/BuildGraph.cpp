@@ -1,7 +1,13 @@
 #include "BuildGraph.h"
+//#include "dsa/DataStructure.h"
+//#include "dsa/DSGraph.h"
 
 #include "llvm/ADT/PostOrderIterator.h"
 #define debug false
+#define code true
+
+
+
 
 #define ProcessCallSiteFrequency 5
 using namespace llvm;
@@ -14,6 +20,7 @@ CallSiteMap::CallSiteMap()
 }
 
 cl::opt<std::string> CallPathFile("callPath", cl::desc("<Source sink call path functions>"), cl::init("-"));
+cl::opt<std::string> Fields("fields", cl::desc("<Relevant fields file>"), cl::init("-"));
 
 
 //Class functionDepGraph
@@ -55,10 +62,13 @@ void moduleDepGraph::getAnalysisUsage(AnalysisUsage &AU) const {
         AU.addRequired<AliasSets> ();
 
     AU.addRequired<CallGraphWrapperPass> ();
+    AU.addRequired<CallGraphWrapper> ();
     AU.addRequiredTransitive<AliasAnalysis>();
     AU.addRequired<MemoryDependenceAnalysis>();
     AU.addRequired<InputDep> ();
-   // AU.addRequired<CallGraphWrapper>();
+    // if(USE_DSA1)
+    AU.addRequired<BUDataStructures> ();
+    // AU.addRequired<CallGraphWrapper>();
     //    AU.addRequiredTransitive<CallGraphWrapperPass> ();
     AU.setPreservesAll();
 }
@@ -67,16 +77,14 @@ bool moduleDepGraph::runOnModule(Module &M) {
 
     AliasSets* AS = NULL;
     CallGraph &CG  = getAnalysis<CallGraphWrapperPass>().getCallGraph();
-    AliasAnalysis &AA = getAnalysis<AliasAnalysis>();
     InputDep &IV = getAnalysis<InputDep> ();
     inputDepValues = IV.getInputDepValues();
-    // CallGraphWrapper &CGW = getAnalysis<CallGraphWrapper>();
-  //  IndMap = CGW.getIndirectMap();
+    CallGraphWrapper &cgWrapper = getAnalysis<CallGraphWrapper> ();
 
+    callPaths = cgWrapper.getCallPaths();
 
-    //Quick target functions identification.. since getting callgraphwrapper pass is not allowing further processing due to ~CallGraph() error.
-    //. need to fix this later.
-    ComputeIndMap(M);
+    //if(USE_DSA1) //need to do this irrespective of the flag, null initialize not allowed.
+    BUDataStructures &BU_ds = getAnalysis<BUDataStructures>();
 
     if (USE_ALIAS_SETS)
         AS = &(getAnalysis<AliasSets> ());
@@ -84,94 +92,91 @@ bool moduleDepGraph::runOnModule(Module &M) {
     //Making dependency graph
     depGraph = new Graph(AS);
     TopDownGraph = new Graph(AS);
-    depGraph->toDot("base","../../AliasSetGraph.dot");
+    FullGraph = new Graph(AS);
+
+    //depGraph->toDot("base","../../AliasSetGraph.dot");
+    //Get the relevant functions on the call path.. approach before the call strings approach.
+    //Check if the option provided..
     getcallPathFunctions();
 
+    //Initialize DSA pointsto graph for each function.
+    InitializePointtoGraphs(M, BU_ds);
 
-    //Bottom up pass for building the data dep graph for individual functions..
-    for (scc_iterator<CallGraph*> I = scc_begin(&CG); !I.isAtEnd(); ++I) {
-        const std::vector<CallGraphNode *> &SCC = *I;
-        for (unsigned i = 0, e = SCC.size(); i != e; ++i) {
-            Function *F = SCC[i]->getFunction();
-            if (F && !F->isDeclaration()) {
-                //Generate data dep for function in call path.
-               if(isFunctiononCallPath(F))
-                {Graph* Fdep = new Graph(AS);
-                    Process_Functions(F,Fdep);
-                    Process_Functions(F,TopDownGraph);
-                    //  FuncDepGraphs[F] = Fdep;
-                    std::string tmp = F->getName();
-                    // replace(tmp.begin(), tmp.end(), '\\', '_');
-                    std::string Filename = "../../demo1_" + tmp + ".dot";
-                    //string fileName = "../../"+F->getName()+"_graph.dot";
-                    errs()<<"\n Writing dot for ******************* "<<F->getName();
-                    Fdep->toDot(F->getName(),Filename);
+    //Process Global variables... :
+    ProcessGlobals(M,TopDownGraph);
+
+    //Use the call strings generated for the provided source and sink functions if it generates paths
+    if(useCallStrings && !(callPaths.size()==0))
+    {
+
+        //Compute the taint summary graphs for the functions in the callpath, and preempt the the rest.
+        //Bottom up pass for building the data dep graph for individual functions..
+        for (scc_iterator<CallGraph*> I = scc_begin(&CG); !I.isAtEnd(); ++I) {
+            const std::vector<CallGraphNode *> &SCC = *I;
+            for (unsigned i = 0, e = SCC.size(); i != e; ++i) {
+                Function *F = SCC[i]->getFunction();
+                if (F && !F->isDeclaration()) {
+                    //Check if the functions is on the call strings.
+                    if(isFunctiononCallString(F))
+                    {
+
+                        Graph* Fdep = new Graph(AS);
+                        if(code) errs()<<"\n\n Processing function fdep graph.. for "<<F->getName();
+                        Process_Functions(F,Fdep,SensitivityDepth);
+                        if(code) errs()<<"\n Processing function topdown graph.. for "<<F->getName()<<"\n";
+                        Process_Functions(F,TopDownGraph,SensitivityDepth);
+                          FuncDepGraphs[F] = Fdep;
+                        std::string tmp = F->getName();
+                        // replace(tmp.begin(), tmp.end(), '\\', '_');
+                        std::string Filename = "../../demo1_" + tmp + ".dot";
+                        //string fileName = "../../"+F->getName()+"_graph.dot";
+                        //    errs()<<"\n Processing Function ******************* "<<F->getName();
+                        Fdep->toDot(F->getName(),Filename);
+                    }
+
                 }
 
-                /*
-                        //Print the generated RDS map for each definition in the given function..
-                        errs()<<"\n+++++++++++++++++++++RDS Size:  "<<Fdep->RDSMap.size();
-
-                        for(map<Value*,set<MemoryOperation*> >::iterator rdIt = Fdep->RDSMap.begin(); rdIt != Fdep->RDSMap.end();++rdIt)
-                        {
-                            errs()<<"\n+++===================";
-                            Value* ptrVal = (*rdIt).first;
-                            set<MemoryOperation*> locations = (*rdIt).second;
-                            ptrVal->dump();
-                            for(set<MemoryOperation*>::iterator locIt = locations.begin();locIt != locations.end();++locIt)
-                            {
-                                errs()<<"Location :"<<(*locIt)->parentBlock->getName()<<" "<<(*locIt)->parentFunction->getName()<<" "<<(*locIt)->lineNumber;
-                                (*locIt)->assignedValue->dump();
-                            }
-                        }
-                        */
             }
+        }  //end of bottom up phase.
 
-        }
-    }  //end of bottom up phase.
-
-
-
-
-
-    //  Graph* tempGraph;
-    //Get the main funciton to start the parsing.
-    //TopDownProcessing(main);
-
-
-
-    //    Function* main = M.getFunction("main");
-    //    if (main) {
-    //       //  Process_Functions(main,TopDownGraph);
-    //        //Do a top down processing here of the call graph starting from main.
-    //        TopDownProcessing(main,AS);
-
-    //    } //end of if main
-
-
-
-
-    //The call Site map after processing all the functions..
-    /*   errs()<<"\n\n$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$";
-    for(map<CallSite*, map<Value*,GraphNode*> >::iterator csMap = TopDownGraph->callParamNodeMap.begin(); csMap != TopDownGraph->callParamNodeMap.end();++csMap)
-    {
-        //CallSite cs;
-        //cs.getCalledValue()getInstruction()
-        errs()<<"\n CAll Site:-----------------\n ";
-        CallSite *cs = (*csMap).first;
-        if(!cs)
-            errs()<<"\n No call Site";
-
-        map<Value*,GraphNode*> paramMap = (*csMap).second;
-        for( map<Value*,GraphNode*>::iterator pMap = paramMap.begin();pMap != paramMap.end();++pMap)
+        int path_count = 0;
+        for (std::vector<Path>::iterator I = callPaths.begin(); I != callPaths.end(); I++)
         {
-            errs()<<"\n param pointer values: ";
-            (*pMap).first->dump();
-            errs()<<"    node label:   "<<(*pMap).second->getLabel();
+            errs()<<"\n Proessing Path.... : "<<path_count++;
+            Path currPath = (*I);
+            //std::reverse(currPath.begin(), currPath.end());
+            callStringFunctions.clear();
+            // currentCallString = "";
+            currentCallString.clear();
+            for(std::vector<instructionCallSite>::const_iterator instCallSite = currPath.begin(); instCallSite != currPath.end(); instCallSite++)
+            {
+
+                instructionCallSite callSiteInfo = (*instCallSite);
+                Function * F = callSiteInfo.function;
+
+                if(F != NULL && !F->isDeclaration())
+                {
+                    Graph *F_Graph = FuncDepGraphs[F];
+                    ForwardProcess(F,F_Graph);
+                    ProcessedCallsites.push_back(&callSiteInfo);
+
+                }
+            }
         }
     }
-    errs()<<"\n$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$";
-    */
+    else  //Process the whole graph..
+    {
+
+            Function* main = M.getFunction("main");
+            if (main) {
+               //  Process_Functions(main,TopDownGraph);
+                //Do a top down processing here of the call graph starting from main.
+                TopDownProcessing(main,AS);
+                depGraph = FullGraph;
+
+            } //end of if main
+    }
+
 
     //Assiging to depgraph for taint --- temporarily
     depGraph = TopDownGraph;
@@ -182,30 +187,13 @@ bool moduleDepGraph::runOnModule(Module &M) {
         // Empty functions include externally linked ones (i.e. abort, printf, scanf, ...)
         if (Fit->begin() == Fit->end())
             continue;
-
-        //    matchParametersAndReturnValues_new(*Fit);
-            matchParametersAndReturnValues(*Fit);
+        matchParametersAndReturnValues(*Fit);
 
     }
 
     std::string Filename = "../../noConstTopDownGraph.dot";
     errs()<<"\n Writing dot for **************** ..TopDownGraph";
     TopDownGraph->toDot("TopDown",Filename);
-
-
-
-
-    //Print Stats:
-    //     errs()<<"\n Var nodes:"<<depGraph->getNumVarNodes();
-    //     errs()<<"\n Mem nodes:"<<depGraph->getNumMemNodes();
-    //     errs()<<"\n Op nodes:"<<depGraph->getNumOpNodes();
-    //     errs()<<"\n control Edges:"<<depGraph->getNumControlEdges();
-    //     errs()<<"\n Data Edges:"<<depGraph->getNumDataEdges();
-
-
-
-
-
 
     //We don't modify anything, so we must return false
     return false;
@@ -223,32 +211,40 @@ void moduleDepGraph::Process_CallSite(Instruction* inst, Function *F)
     //at a call site which needs to be processed...
     //get the actual params for the function.. .. check the function  map params..
 
-
     for (Function::arg_iterator Arg = F->arg_begin(), aEnd = F->arg_end(); Arg != aEnd; Arg++) {
         //  Arg->dump();
         //
     }
     //Create the graph add edges in the graph for the given function..!!
-    Process_Functions(F,TopDownGraph);
+    Process_Functions(F,TopDownGraph,SensitivityDepth);
 
 
 }
 
 
+void moduleDepGraph::ProcessGlobals(Module& M, Graph* TopDownGraph)
+{
+    for (Module::global_iterator GVI = M.global_begin(), E = M.global_end();
+         GVI != E; ) {
+        GlobalVariable *GV = GVI++;
+        // Global variables without names cannot be referenced outside this module.
+        if (!GV->hasName() && !GV->isDeclaration() && !GV->hasLocalLinkage())
+            GV->setLinkage(GlobalValue::InternalLinkage);
+        //Process the GV to add node in topdowngraph.
+        Value * GV_Val = GV;
+        //GV->dump();
+        //get val make node.. what all nodes to make and what all to eliminate.. nodes with no use delete..
+        // can run globalopt before...
+        TopDownGraph->addGlobalVal(GV);
+
+    }
+}
+
+
 void moduleDepGraph::TopDownProcessing(Function * F, AliasSets * AS)
 {
-
-    //Check if the graph exists for Function..
-    //FuncDepGraphs[F]
-    //   Graph * FDep = new Graph(AS);
-
     //Processing the Function, generate the data flow graph.
-    Process_Functions(F,TopDownGraph);
-
-
-    // FuncDepGraphs[F]  = FDep;
-
-    //Graph * TopDownGraph = new
+    Process_Functions(F,FullGraph,SensitivityDepth);
 
     //Iterating over the function blocks to look for next call sites and process the targets.
     for (Function::iterator BBit = F->begin(), BBend = F->end(); BBit
@@ -256,19 +252,12 @@ void moduleDepGraph::TopDownProcessing(Function * F, AliasSets * AS)
         for (BasicBlock::iterator Iit = BBit->begin(), Iend = BBit->end(); Iit
              != Iend; ++Iit) {
 
-            /// get the function graph..
-            ///merge the function graph in the bigger topdown graph..
-            ///look for the actual nodes and  then look for the param nodes.. and add connections.
-            /// if the params are gep then do the root mapping as before..
-            /// maintin a call string.. of as u reach the funcitons.. if a pattern starts repeating in the call string then we need to get truncate it.
-            /// Getting all the domianant conditionals..?
             //TODO: also handle if && !isa<InvokeInst>(U) check how is it different.
             Instruction *Inst = &*Iit;
 
             if(CallInst * CI = dyn_cast<CallInst>(Inst))
             {
-                //    errs()<<"\nPROPAGATE:";
-                //   CI->dump();
+
                 CallSite cs(CI);
 
                 Function * calledFunc = CI->getCalledFunction();
@@ -333,14 +322,6 @@ void moduleDepGraph::TopDownProcessing(Function * F, AliasSets * AS)
                     }
 
 
-                    //                    //calledFunc->isDeclaration() ||
-                    //                    if(calledFunc)
-                    //                    {
-                    //                        if(calledFunc->isDeclaration())
-                    //                        {
-                    //                            errs()<<"\n error case !!";
-                    //                        }
-                    //                    }
 
                     if((ty->isPointerTy()  && IndMap[cs].size()==0 ))
                     {
@@ -371,8 +352,6 @@ void moduleDepGraph::HandleLibraryFunctions(CallInst * CI, Function * F)
     //Default case : Adding edge from the callsite params to return variable.
 
     //   errs()<<"\n In funct handle lib call!";
-
-
     CallSite::arg_iterator AI;
     CallSite::arg_iterator EI;
     bool noReturn;
@@ -384,7 +363,6 @@ void moduleDepGraph::HandleLibraryFunctions(CallInst * CI, Function * F)
     Instruction *caller = cast<Instruction> (CI);
     //  SmallVector<std::pair<GraphNode*, GraphNode*>, 4> Parameters(F->arg_size());
     map<int, GraphNode*> parameters;
-
 
     //TODO: Correct the return node param from the matchparam functions..
     //    errs()<<"\n Check no return !";
@@ -398,7 +376,6 @@ void moduleDepGraph::HandleLibraryFunctions(CallInst * CI, Function * F)
             TopDownGraph->addEdge(retPHI, callerNode);
 
     }
-
 
     //Get the callSite param to graphnode map generated for the callsite
     CallSiteMap * callParams = TopDownGraph->CallSiteParams[CI];
@@ -473,8 +450,6 @@ int moduleDepGraph::isCallSiteProcessed(CallSiteMap* csm)
 void moduleDepGraph::AddUniqueQueueItem(set<BasicBlock*> &setBlock, queue<BasicBlock*> &queueBlock, BasicBlock * bb)
 {
     //  queue<BasicBlock*>::iterator it = find(queueBlock.begin(),queueBlock.end(),bb);
-
-
     if (setBlock.find(bb) == setBlock.end())
     {
         queueBlock.push(bb);
@@ -483,39 +458,84 @@ void moduleDepGraph::AddUniqueQueueItem(set<BasicBlock*> &setBlock, queue<BasicB
 }
 
 
-
-//Precosses functions as per the control flow of and process the individual basic blocks..
-void moduleDepGraph::Process_Functions(Function* F, Graph* F_Graph)
+///Function to initialize the points to graph for each function from the the DSA points to analysis.
+///Stores the result in funcPointsToMap[F]
+void moduleDepGraph::InitializePointtoGraphs(Module &M,BUDataStructures &BU_ds)
 {
-    //
+    for (Module::iterator F = M.begin(), endF = M.end(); F != endF; ++F) {
+
+        //  errs()<<"\n initialize points to for :"<<F->getName();
+        //Initiate the points to grapg for the child.
+        if (F && !F->isDeclaration())
+        {
+            DSGraph *PointstoGraph  = BU_ds.getDSGraph(*F);
+            funcPointsToMap[F] = PointstoGraph;
+
+
+            //Writes the Points to graph in dot files..
+
+            std::string ErrorInfo;
+            // sys::fs::OpenFlags Flags;
+            std::string fileName = "DSGraphInfo.txt";
+            // nodeCount =0;
+            raw_fd_ostream File(fileName.c_str(), ErrorInfo,sys::fs::F_None);
+
+            if (!ErrorInfo.empty()) {
+                errs() << "Error opening file " << fileName
+                       << " for writing! Error Info: " << ErrorInfo << " \n";
+                return;
+            }
+
+            std::string funcNames = PointstoGraph->getFunctionNames();
+
+            PointstoGraph->writeGraphToFile(File,"../../TestFiles/"+funcNames);
+        }
+
+    }
+}
+
+
+bool moduleDepGraph::isPathProcessed(Function* F, vector<Function*> callPath, CallSite callSite)
+{
+
+    callStringFunctions.push_back(F);
+    // currentCallString = currentCallString +","+F->getName();
+    currentCallString.append(",");
+    currentCallString.append(F->getName());
+    set< vector<Function*> > callStringFunc = ProcessedCallStringFunctions[F];
+    set<string> callStrings = ProcessedCallStrings[F];
+    errs()<<"\n\n Current Path:"<<currentCallString;
+    for(set<string>::iterator callst = callStrings.begin(); callst != callStrings.end(); ++callst)
+    {
+
+        string callstring = (*callst);
+        errs()<<"\n call string for function :  "<<callstring;
+        // if(strcmp(currentCallString.c_str(),callstring.c_str()) == 0)
+        if(currentCallString.compare(callstring) == 0)
+        {
+            errs()<<"\n Path already processsed" << currentCallString;
+            return true;
+        }
+    }
+    callStrings.insert(currentCallString);
+    ProcessedCallStrings[F] = callStrings;
+    callStringFunc.insert(callStringFunctions);
+    ProcessedCallStringFunctions[F] = callStringFunc;
+    return false;
+}
+
+
+void moduleDepGraph::Process_Functions(Function* F, Graph* F_Graph, int SensDepth)
+{
+    //Check if call path already processed if yes, dont process and return, else process with the appropriate context.
+
     if(debug) errs()<<"\n Processing funtion recursive.. "<< F->getName() <<"  ";
     MDA = &getAnalysis<MemoryDependenceAnalysis>((*F));
 
-
     //Add nodes for function parameters..
     for (Function::arg_iterator Arg = F->arg_begin(), aEnd = F->arg_end(); Arg != aEnd; Arg++) {
-        // Arg->dump();
-        GraphNode * pNode = F_Graph->addInst(Arg,-10,F);
-
-        /*    if(pNode)
-        {
-        errs()<<"\n\n Prama node created : "<<pNode->getLabel();
-        if(isa<MemNode>(pNode))
-            errs()<<"  MEm node: ";
         Arg->dump();
-        }
-        else
-        {    errs()<<"\n No Prama node created... ! ";
-             Arg->dump();
-        }
-*/
-        //The live map should also consider the call statements as the store for pointer only for the formal params..
-        //While doing a live check for a paramter to a function...
-        //if it reaches the entry and there is no store.. we should map it to the node from the call site....
-        //and add it in live map...
-        //also at the point of
-
-
+        GraphNode * pNode = F_Graph->addParamNode(Arg ,F);
     }
 
     //Get first block to process:
@@ -529,6 +549,7 @@ void moduleDepGraph::Process_Functions(Function* F, Graph* F_Graph)
     if(bbit)
     {
         WorkList.push(bbit);
+        // errs()<<"Processing the block now :"<<bbit->getName()<< "  ";
 
         while(!WorkList.empty())
         {
@@ -536,9 +557,7 @@ void moduleDepGraph::Process_Functions(Function* F, Graph* F_Graph)
             WorkList.pop();
             //Trial.. also try and remove the element from set as well.. will get only recursive elements..
             // setBlock.erase(BBproc); dont process loop blocks again..
-            //TODO: reprocess the loop blocks only if context changes somehow.. (need to apply some proper policy to this..)
-
-
+            //TODO: reprocess the loop blocks only if context changes
             //Process the popped block
             affected_BB.clear();
             affected_BB = Process_Block(BBproc, F_Graph);
@@ -547,7 +566,7 @@ void moduleDepGraph::Process_Functions(Function* F, Graph* F_Graph)
             for(set<BasicBlock*>::iterator afB = affected_BB.begin(); afB != affected_BB.end();++afB)
             {
                 WorkList.push(*afB);
-                //TODO: need some base condition to stop adding the affected blocks recursively....
+                //TODO: need some base condition to stop adding the affected blocks recursively., update: handle at proc block
             }
 
             //Iterate over the successors of the block and add them in the worklist.
@@ -567,7 +586,147 @@ void moduleDepGraph::Process_Functions(Function* F, Graph* F_Graph)
     //Mark Graph generated for the function
     FunctionGraphGen[F] = 1;
 
+
+    //Write the Graph in the dot file
+    std::string tmp = F->getName();
+    // replace(tmp.begin(), tmp.end(), '\\', '_');
+    std::string Filename = "../../demo1_" + tmp + ".dot";
+    //string fileName = "../../"+F->getName()+"_graph.dot";
+    //errs()<<"\n Processing Function ******************* "<<F->getName();
+    F_Graph->toDot(F->getName(),Filename);
+
+    //if the sensitivity depth is not zero, then process the functions called in this function.
+    /*
+    if(SensDepth!=0)
+    {
+    for (Function::iterator BB = F->begin(), endBB = F->end(); BB != endBB; ++BB) {
+
+        for (BasicBlock::iterator I = BB ->begin(), endI = BB->end(); I != endI; ++I){
+
+            if (CallInst* callInst = dyn_cast<CallInst>(&*I)) {
+
+               // callInst->dump();
+                if (callInst->getCalledFunction() != NULL )
+                {
+                   // errs()<<"\n processing child funct : "<<callInst->getCalledFunction()->getName();
+                    Function * calledFunc = callInst->getCalledFunction();
+                    if(!calledFunc->isDeclaration())
+                    {
+                        Process_Functions(calledFunc,F_Graph,SensDepth-1);
+                    }
+                }
+            }
+        }
+    }
+    }
+    */
+
+    ///Bakward processing pass to process all loads..
+
+    BasicBlock* TermBlock = &F->back();
+    map<Value*, set< Value*> > LoadQueue;
+    LoadStoreMap(LoadQueue,TermBlock,F_Graph);
+
 }
+
+
+
+void moduleDepGraph::LoadStoreMap(map<Value*, set< Value*> > LoadQueue,BasicBlock* ProcBlock, Graph * F_Graph)
+{
+    //Process block for loads and stores..
+
+    for (BasicBlock::reverse_iterator Iit = ProcBlock->rbegin(), Iend = ProcBlock->rend(); Iit != Iend; ++Iit)
+    {
+
+        Function* parentFunc = ProcBlock->getParent();
+        //check if load and update queue..
+        if(isa<LoadInst>(&*Iit))
+        {
+            LoadInst *LI = dyn_cast<LoadInst>(&*Iit);
+            //Update the loadinst queue for load ptr..
+            Value * LoadPtr = LI->getOperand(0);
+            set< Value*> LoadInsts = LoadQueue[LoadPtr];
+            LoadInsts.insert(LI);
+            LoadQueue[LoadPtr] = LoadInsts;
+
+            //TODO: Check if we need to add for the root ptr as well.. if not then done..
+
+        }
+
+        //check if store and maps to any load...
+        if(isa<StoreInst>(&*Iit))
+        {
+            StoreInst *SI = dyn_cast<StoreInst>(&*Iit);
+            Value * StorePtr = SI->getPointerOperand();
+            Value * StoreRootPtr = SI->getPointerOperand();
+            bool gepInst_S = false;
+            if(isa<GetElementPtrInst>(StorePtr))
+            {
+                //    errs()<<"\nStore is is a GEP..!!";
+                //get root
+                gepInst_S = true;
+                GetElementPtrInst* GI = dyn_cast<GetElementPtrInst>(StorePtr);
+                StoreRootPtr =  GI->getPointerOperand();
+            }
+            //Iterate through the Queue..
+
+            for(map<Value*, set< Value*> >::iterator loadQIt = LoadQueue.begin();loadQIt != LoadQueue.end(); ++loadQIt)
+            {
+                bool gepInst_L = false;
+                Value* LoadPtr = (*loadQIt).first;
+                Value* LoadRootPtr = (*loadQIt).first;
+                if(isa<GetElementPtrInst>(LoadPtr))
+                {
+                    // errs()<<"\n\n\n IT is a GEP..!!";
+                    //get root
+                    gepInst_L = true;
+                    GetElementPtrInst* GI = dyn_cast<GetElementPtrInst>(LoadPtr);
+                    LoadRootPtr =  GI->getPointerOperand();
+                }
+
+                if(checkPointer(LoadPtr,StorePtr,parentFunc))
+                {
+                    GraphNode * stNode = F_Graph->StoreNodeMap[SI];
+                    if(stNode != NULL)
+                    {
+                        //Iterate through all load inst for that pointer..
+                        set< Value*> LoadInsts = (*loadQIt).second;
+                        for(set< Value*>::iterator LI_IT = LoadInsts.begin(); LI_IT != LoadInsts.end(); ++LI_IT)
+                        {
+                            GraphNode * ldNode = F_Graph->findNode(*LI_IT);
+                            if(ldNode != NULL )
+                            {
+                                stNode->connect(ldNode);
+                                if(code) errs()<<"\n +++++ Connecting the pointer nodes...  "<<stNode->getLabel()<<" -- "<<ldNode->getLabel()<<" for ptrs ";
+                                if(code) StorePtr->dump();
+                                if(code) LoadPtr->dump();
+                            }
+                        }
+                    }
+
+                }
+            }
+
+        }
+    }
+
+    //Recursive call on all preds for LoadQueue.
+    for (pred_iterator PI = pred_begin(ProcBlock), E = pred_end(ProcBlock); PI != E; ++PI) {
+        BasicBlock *Pred = *PI;
+        int processedSize = BT_ProcessedBlocks.size();
+        BT_ProcessedBlocks.insert(Pred);
+        //Don't process preds if current block processed..
+        if(processedSize!=BT_ProcessedBlocks.size())
+        {
+            //errs()<<"\n Prcessed Block Size --- "<<ProcessedBlocks.size();
+            LoadStoreMap(LoadQueue,Pred,F_Graph);
+        }
+    }
+
+
+}
+
+
 
 
 set<BasicBlock*>  moduleDepGraph::Process_Block(BasicBlock* BB, Graph* F_Graph)
@@ -576,7 +735,6 @@ set<BasicBlock*>  moduleDepGraph::Process_Block(BasicBlock* BB, Graph* F_Graph)
     set<BasicBlock*> affected_BB;
 
     Function * parentFunction = BB->getParent();
-    //  if(debug) errs()<<"\n\n Processing Block recursive.. "<< BB->getName() <<" in function "<<BB->getParent()->getName();
 
     int counter =0;
     //Iterate over each instruction in the block and process it.
@@ -584,89 +742,68 @@ set<BasicBlock*>  moduleDepGraph::Process_Block(BasicBlock* BB, Graph* F_Graph)
          != Iend; ++Iit) {
 
 
-        /*  Code to check memory dependence (see if it helps).. work on it later..
-
-         errs()<<"\n\n@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@";
-            Iit->dump();
-
-            if(isa<LoadInst>(&*Iit))
+        if(isa<GetElementPtrInst>(&*Iit))
+        {
+            //Check if it is the field of interest.
+            GetElementPtrInst * GI = dyn_cast<GetElementPtrInst>(&*Iit);
+            Value* baseptr = GI->getOperand(0);
+            // if(code) errs()<<"\n\n   GEP";
+            if(code) baseptr->dump();
+            for(set<RelevantFields*>::iterator fieldIt = relevantFields.begin(); fieldIt != relevantFields.end(); ++fieldIt)
             {
-                errs()<<"\n@@@@@@@@@@@@@@@@@ is load..!! ";
-                MemDepResult memDep = MDA->getDependency(&*Iit);
-               // if(memDep.isDef())
-                //{
-                    Instruction * dep = memDep.getInst();
-                    errs()<<"\n\n@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@";
-                    (*Iit).dump();
-                    errs()<<"  depends on ";
-                    dep->dump();
-                //}
-            }
-            */
 
-
-        //Code to backtrack the stores for each load...keep a record of it in the depgraph.
-        //F_Graph->LiveMap;
-        if(isa<LoadInst>(&*Iit))
-        {
-            //   errs()<<"\n\n@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@";
-            //    Iit->dump();
-
-            BasicBlock * parentBlock = Iit->getParent();
-            // Value* loadPtr = Iit->getOperand(0);
-
-            //set<BasicBlock*> ProcessedBlocks;
-            ProcessedBlocks.clear();
-            ProcessedBlocks.insert(parentBlock);
-            Value * LoadPtr = Iit->getOperand(0);
-            //m2.insert(m1.begin(), m1.end());
-            F_Graph->BackupLiveMap[LoadPtr].clear();
-            F_Graph->BackupLiveMap[LoadPtr].insert(F_Graph->LiveMap[LoadPtr].begin(),F_Graph->LiveMap[LoadPtr].end()); // = F_Graph->LiveMap[LoadPtr];
-            F_Graph->LiveMap.clear();
-            CollectLiveStores(parentBlock, Iit,F_Graph);
-            // errs()<<"\n@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@";
-        }
-        if(isa<CallInst>(&*Iit))
-        {
-            //collect Live stores for the parameters.
-            // map<CallSite*,map<Value*,set<MemoryOperation*> > >  callSiteLiveParams;
-
-            CallSite CS(&*Iit);
-            //map<Value*,set<MemoryOperation*> > paramLiveMap;
-            //set<MemoryOperation*>  stores;
-            //TODO: record the live information at the call site..
-            CallSite::arg_iterator AI;
-            CallSite::arg_iterator EI;
-
-            //   errs()<<"\n\n CallSite arguments fo ..... : ";
-            //CS.getCalledValue()->dump();
-            for (AI = CS.arg_begin(), EI = CS.arg_end(); AI != EI; ++AI) {
-                //Parameters[i].second = TopDownGraph->addInst_new(*AI);
-                //  Value * param = &*AI;
-                Use * useparam = &*AI;
-                Value * param =  useparam->get();
-                GraphNode* Gnode = F_Graph->findNode(param);
-                if(Gnode != NULL)
+                if((*fieldIt)->functionName==parentFunction->getName())
                 {
+                    if(baseptr->hasName())
+                        if(baseptr->getName()== (*fieldIt)->variable)
+                        {
+                            if(code) errs()<<"\nTesting for var : "<<(*fieldIt)->variable;
 
-                    //check if memory node/pointer.. if so then update the live stores
-                    if(isa<MemNode>(Gnode))
-                    {
-                        //    errs()<<"\n MEm param Node found : "<<Gnode->getLabel();
-                        //   param->dump();
-                        CollectLiveStores_Params(Iit->getParent(),&*Iit,param,F_Graph);
-                    }
+                            int fieldIndex;
+                            for (int i = GI->getNumOperands() - 2; i > 0; i--) {
+                                Type *ty = GI->getType();
+                                //  assert(ty->isArrayTy() || ty->isStructTy());
+                                if (ty->isStructTy()) { // structure field
+
+                                    fieldIndex = cast<ConstantInt>(GI->getOperand(i + 1))->getZExtValue();
+
+                                }
+                            }
+                            //match index.
+                            if(fieldIndex == (*fieldIt)->index)
+                            {
+                                FieldVals.insert(GI);
+                                //update fields in graph.
+                                F_Graph->FieldsVal = FieldVals;
+                                if(code) errs()<<"\n\n   Found field";
+                                if(code) GI->dump();
+                            }
+                        }
 
                 }
-
-                //param->get()->dump();
-
             }
+        }
+        if(isa<CallInst>(&*Iit))  //  handle the call inst.
+        {
+            CallInst *CI = dyn_cast<CallInst>(&*Iit);
+            CallSite cs(&*Iit);
 
+            Function * calledFunc = CI->getCalledFunction();
+            if(calledFunc && !calledFunc->isDeclaration())
+            {
+                //Map params or pre-empt funciton..
+            } //if called func
 
+            if(calledFunc && calledFunc->isDeclaration())
+            {
+                //    errs()<<"\nPROPAGATE: Call Site with called func and IS delaration.. !!";
+                //  CI->dump();
+                HandleLibraryFunctions(CI,parentFunction);
+            }
 
         }
 
+        //Process each statement in Graph add node..
         F_Graph->addInst(Iit,counter,parentFunction);
         counter++;
     }
@@ -679,6 +816,7 @@ set<BasicBlock*>  moduleDepGraph::Process_Block(BasicBlock* BB, Graph* F_Graph)
 void moduleDepGraph::CollectLiveStores_Params(BasicBlock* predBlock, Instruction * Cinst,Value* pointer, Graph* F_Graph)
 {
     BasicBlock * parentBlock = Cinst->getParent();
+    Function * parentFunc = parentBlock->getParent();
     CallSiteMap * callParams = new CallSiteMap();
     bool begin;
     int LineNumber = 0;
@@ -717,7 +855,7 @@ void moduleDepGraph::CollectLiveStores_Params(BasicBlock* predBlock, Instruction
                     GetElementPtrInst* GI = dyn_cast<GetElementPtrInst>(LoadPtr);
                     RootPtr =  GI->getPointerOperand();
                 }
-                if((LoadPtr==StorePtr) || (RootPtr==StorePtr))
+                if(checkPointer(LoadPtr,StorePtr,parentFunc) || checkPointer(RootPtr,StorePtr,parentFunc))
                 {
                     //    errs()<<"\n----Matching store found at line.. "<<LineNumber;
                     MemoryOperation *storeLoc = new MemoryOperation;
@@ -751,7 +889,7 @@ void moduleDepGraph::CollectLiveStores_Params(BasicBlock* predBlock, Instruction
                     //  RootPtr->dump();
                     //  LoadPtr->dump();
 
-                    if((LoadPtr==StoreRootPtr) || (RootPtr==StoreRootPtr))
+                    if(checkPointer(LoadPtr,StoreRootPtr,parentFunc) || checkPointer(RootPtr,StoreRootPtr,parentFunc))
                     {
                         //           errs()<<"\n----Matching store found at line.. "<<LineNumber;
                         MemoryOperation *storeLoc = new MemoryOperation;
@@ -807,11 +945,10 @@ void moduleDepGraph::CollectLiveStores_Params(BasicBlock* predBlock, Instruction
 }
 
 
-
-
 void moduleDepGraph::CollectLiveStores(BasicBlock* predBlock, Instruction * Linst,Graph* F_Graph)
 {
     BasicBlock * parentBlock = Linst->getParent();
+    Function * parentFunc =  parentBlock->getParent();
     bool begin;
     int LineNumber = 0;
     if(parentBlock==predBlock)
@@ -849,7 +986,7 @@ void moduleDepGraph::CollectLiveStores(BasicBlock* predBlock, Instruction * Lins
                     GetElementPtrInst* GI = dyn_cast<GetElementPtrInst>(LoadPtr);
                     RootPtr =  GI->getPointerOperand();
                 }
-                if((LoadPtr==StorePtr) || (RootPtr==StorePtr))
+                if(checkPointer(LoadPtr,StorePtr,parentFunc) || (checkPointer(RootPtr,StorePtr,parentFunc)))
                 {
                     //    errs()<<"\n----Matching store found at line.. "<<LineNumber;
                     MemoryOperation *storeLoc = new MemoryOperation;
@@ -883,7 +1020,8 @@ void moduleDepGraph::CollectLiveStores(BasicBlock* predBlock, Instruction * Lins
                     //  RootPtr->dump();
                     //  LoadPtr->dump();
 
-                    if((LoadPtr==StoreRootPtr) || (RootPtr==StoreRootPtr))
+                    // if((LoadPtr==StoreRootPtr) || (RootPtr==StoreRootPtr))
+                    if(checkPointer(LoadPtr,StoreRootPtr,parentFunc) || checkPointer(RootPtr,StoreRootPtr,parentFunc))
                     {
                         //           errs()<<"\n----Matching store found at line.. "<<LineNumber;
                         MemoryOperation *storeLoc = new MemoryOperation;
@@ -935,6 +1073,66 @@ void moduleDepGraph::CollectLiveStores(BasicBlock* predBlock, Instruction * Lins
             CollectLiveStores(Pred,Linst,F_Graph);
         }
     }
+
+}
+
+
+
+
+//In this funciton: it is checked if any of the targetptr is an alias of ptr when using aliasSEts.
+//For points to info... check if ptr and targetptr points to the same memory location using the DSA points to info.
+bool moduleDepGraph::checkPointer(Value * Ptr, Value* targetPtr, Function * parentFunc)
+{
+    Value * pointer =  Ptr;
+    bool foundMatch = false;
+    DSGraph * pointstoGraph = funcPointsToMap[parentFunc];
+    //currently using TopDownGraph ... later change it to the passed F_GRaph for consistency.
+    GraphNode* Var = TopDownGraph->findNode(Ptr);
+    // errs()<<"\n checking alias for :";
+    //Ptr->dump();
+    if(Var && USE_ALIAS)
+    {
+        if(isa<MemNode>(Var))
+        {
+            MemNode * memNew = dyn_cast<MemNode>(Var);
+            // Value * val = memNew->defLocation.second;
+            std::set<Value*> aliases = memNew->getAliases();
+            for(set<Value*>::iterator alVal = aliases.begin(); alVal != aliases.end();++alVal)
+            {
+                //(*alVal)->dump();
+                if((*alVal)==targetPtr)
+                {
+                    pointer = (*alVal);
+                    foundMatch = true;
+                    //   errs()<<"\n\n***************************Alias Match found!!";
+                    //  Ptr->dump();
+                    // (*alVal)->dump();
+                }
+            }
+        }
+    }
+    //----------DSA points to checks-------
+    if(Var && USE_DSA1)
+    {
+        //  DSNodeHandle
+        DSNodeHandle ptrNode =  pointstoGraph->getNodeForValue(Ptr);
+        DSNodeHandle targetPtrNode =  pointstoGraph->getNodeForValue(targetPtr);
+        if(ptrNode == targetPtrNode)
+        {
+            // errs()<<"\n\n ---DSA pointer match found for :";
+            //Ptr->dump();
+            //targetPtr->dump();
+            foundMatch = true;
+        }
+
+    }
+
+    //-------
+
+    if(Ptr==targetPtr)
+        foundMatch = true;
+
+    return foundMatch;
 
 }
 
@@ -1117,8 +1315,6 @@ void moduleDepGraph::matchParametersAndReturnValues_new(Function &F) {
 
 
 
-
-
 void moduleDepGraph::matchParametersAndReturnValues(Function &F) {
 
     // Only do the matching if F has any use
@@ -1239,43 +1435,219 @@ void moduleDepGraph::matchParametersAndReturnValues(Function &F) {
 }
 
 
+void moduleDepGraph::ForwardProcess(Function* F, Graph * F_Graph)
+{
+    for (Function::iterator BB = F->begin(), endBB = F->end(); BB != endBB; ++BB) {
 
+        for (BasicBlock::iterator I = BB ->begin(), endI = BB->end(); I != endI; ++I){
+
+            if (CallInst* callInst = dyn_cast<CallInst>(&*I)) {
+
+               // callInst->dump();
+                if (callInst->getCalledFunction() != NULL )
+                {
+                   // errs()<<"\n processing child funct : "<<callInst->getCalledFunction()->getName();
+                    Function * calledFunc = callInst->getCalledFunction();
+                    if(!calledFunc->isDeclaration())
+                    {
+                        MatchContextParams(F,calledFunc,callInst,F_Graph);
+                    }
+                }
+            }
+        }
+    }
+    //MatchContextParams
+}
+
+
+void moduleDepGraph::MatchContextParams(Function* Caller, Function *Callee, CallInst *CI,Graph* F_Graph)
+{
+    // Only do the matching if F has any use
+    if (Callee->isVarArg() || !Callee->hasNUsesOrMore(1)) {
+        return;
+    }
+    if(debug) errs()<<"\n Function arg matching for;; "<< Callee->getName();
+
+    // Data structure which contains the matches between formal and real parameters
+    // First: formal parameter
+    // Second: real parameter
+    SmallVector<std::pair<GraphNode*, GraphNode*>, 4> Parameters(Callee->arg_size());
+
+    // Fetch the function arguments (formal parameters) into the data structure
+    Function::arg_iterator argptr;
+    Function::arg_iterator e;
+    unsigned i;
+
+    //Create the PHI nodes for the formal parameters
+    for (i = 0, argptr = Callee->arg_begin(), e = Callee->arg_end(); argptr != e; ++i, ++argptr) {
+
+        OpNode* argPHI = new OpNode(Instruction::PHI);
+        GraphNode* argNode = NULL;
+        argNode = F_Graph->addInst(argptr,-1,Callee);
+
+        if (argNode != NULL)
+        {
+            F_Graph->addEdge(argPHI, argNode);
+            if (debug) errs()<<"\nAdding Edge between "<< argPHI->getLabel()<<" -- "<<argNode->getLabel();
+        }
+
+        Parameters[i].first = argPHI;
+    }
+
+    // Check if the function returns a supported value type. If not, no return value matching is done
+    bool noReturn = Callee->getReturnType()->isVoidTy();
+
+    // Creates the data structure which receives the return values of the function, if there is any
+    SmallPtrSet<llvm::Value*, 8> ReturnValues;
+
+    if (!noReturn) {
+        // Iterate over the basic blocks to fetch all possible return values
+        for (Function::iterator bb = Callee->begin(), bbend = Callee->end(); bb != bbend; ++bb) {
+            // Get the terminator instruction of the basic block and check if it's
+            // a return instruction: if it's not, continue to next basic block
+            Instruction *terminator = bb->getTerminator();
+
+            ReturnInst *RI = dyn_cast<ReturnInst> (terminator);
+
+            if (!RI)
+                continue;
+
+            // Get the return value and insert in the data structure
+            ReturnValues.insert(RI->getReturnValue());
+        }
+    }
+
+    //  for (Value::use_iterator UI = F.use_begin(), E = F.use_end(); UI != E; ++UI) {
+    for (Value::user_iterator UI = Callee->user_begin(), E = Callee->user_end(); UI != E; ++UI) {
+        User *U = *UI;
+        //                Use *BU = &UI.getUse();
+        // Value::const_user_iterator & CUI =UI::reference;
+        //  const Use CU = UI.getUse();
+        // Use *U = &*UI;
+        // Ignore blockaddress uses
+
+        //NT: TODO: Solve the error in the following:
+        if (isa<BlockAddress> (U))
+            continue;
+
+        // Used by a non-instruction, or not the callee of a function, do not
+        // match.
+        if (!isa<CallInst> (U) && !isa<InvokeInst> (U))
+            continue;
+
+        Instruction *caller = cast<Instruction> (U);
+
+        CallSite CS(caller);
+        if (!CS.isCallee(&UI.getUse()))
+            continue;
+
+        // Iterate over the real parameters and put them in the data structure
+        CallSite::arg_iterator AI;
+        CallSite::arg_iterator EI;
+
+        for (i = 0, AI = CS.arg_begin(), EI = CS.arg_end(); AI != EI; ++i, ++AI) {
+            Parameters[i].second = F_Graph->addInst(*AI,-1,Callee);
+        }
+
+        // Match formal and real parameters
+        for (i = 0; i < Parameters.size(); ++i) {
+
+            F_Graph->addEdge(Parameters[i].second, Parameters[i].first);
+            if(debug) errs()<<"\nAdding Edge between "<< Parameters[i].second->getLabel()<<" -- "<<Parameters[i].first->getLabel();
+        }
+
+        // Match return values
+        if (!noReturn) {
+
+            OpNode* retPHI = new OpNode(Instruction::PHI);
+            GraphNode* callerNode = F_Graph->addInst(caller,-1,Callee);
+            F_Graph->addEdge(retPHI, callerNode);
+
+            for (SmallPtrSetIterator<llvm::Value*> ri = ReturnValues.begin(),
+                 re = ReturnValues.end(); ri != re; ++ri) {
+                GraphNode* retNode = F_Graph->addInst(*ri,-1,Callee);
+                F_Graph->addEdge(retNode, retPHI);
+            }
+
+        }
+
+        // Real parameters are cleaned before moving to the next use (for safety's sake)
+        for (i = 0; i < Parameters.size(); ++i)
+            Parameters[i].second = NULL;
+    }
+
+    F_Graph->deleteCallNodes(Callee);
+
+
+}
+
+
+//For the call strings method.. check if the function is in the callstrings.
+bool moduleDepGraph::isFunctiononCallString(Function * F)
+{
+    //Code that checks for function in any of the call strings.
+    for (std::vector<Path>::iterator I = callPaths.begin();
+         I != callPaths.end();
+         I++)
+    {
+        Path currPath = (*I);
+        //   std::reverse(currPath.begin(), currPath.end());
+        for(std::vector<instructionCallSite>::const_iterator instCallSite = currPath.begin(); instCallSite != currPath.end(); instCallSite++)
+        {
+
+            instructionCallSite callSiteInfo = (*instCallSite);
+            Function * Func = callSiteInfo.function;
+            if(Func == F)
+                return true;
+        }
+    }
+    return false;
+}
+
+
+
+
+///Function: isFunctiononCallPath
+/// Description: To check if the function to process is on the provided call path.
 bool moduleDepGraph::isFunctiononCallPath(Function * F)
 {
+
+    //Code that checks for functions in the call path list read from the file.
     string funcName = F->getName();
     if(std::find(callPathFunctions.begin(), callPathFunctions.end(), funcName)!=callPathFunctions.end())
         return true;
     else
         return false;
+
 }
 
 
 
+///Function: getcallPathFunctions
+/// Description: Read the call paths file and store the functions on the call path to process.
+///
 void moduleDepGraph::getcallPathFunctions()
 {
-   //read file if specified.
+    //read file if specified.
     std::ifstream cpFile (CallPathFile.c_str(), std::ifstream::in);
-       std::string line;
-       if(!cpFile)
-       {
-           errs() << " Could not open the Call Path file \n";
-       }
-       else
-       {
-           while (getline(cpFile, line))
-           {
-               line.erase( std::remove_if( line.begin(), line.end(), ::isspace ), line.end() );
-               callPathFunctions.push_back(line);
-           }
-       }
+    std::string line;
+    if(!cpFile)
+    {
+        errs() << " Could not open the Call Path file \n";
+    }
+    else
+    {
+        while (getline(cpFile, line))
+        {
+            line.erase( std::remove_if( line.begin(), line.end(), ::isspace ), line.end() );
+            callPathFunctions.push_back(line);
+        }
+    }
 
 
     //Get directly from the callgraph path is possible.
 
 }
-
-
-
 
 
 void llvm::moduleDepGraph::deleteCallNodes(Function* F) {
@@ -1295,12 +1667,43 @@ static RegisterPass<ViewModuleDepGraph> Z("view-depgraph",
 
 
 
+void moduleDepGraph::ReadRelevantFields(){
+
+    std::ifstream srcFile (Fields.c_str(), std::ifstream::in);
+    std::string line;
+    if(!srcFile)
+    {
+        errs() << " Could not open the taint Input file \n";
+    }
+    else
+    {
+        while(srcFile >> line)
+        {
+            line.erase( std::remove_if( line.begin(), line.end(), ::isspace ), line.end() );
+            RelevantFields * rs = new RelevantFields();
+            rs->functionName = line;
+            if(srcFile >> line)
+            { line.erase( std::remove_if( line.begin(), line.end(), ::isspace ), line.end() );
+                rs->variable = line;
+                if(srcFile >> line)
+                { line.erase( std::remove_if( line.begin(), line.end(), ::isspace ), line.end() );
+                    rs->index = std::atoi(line.c_str());
+                    relevantFields.insert(rs);
+                }
+                // taintSources.insert(ts);
+            }
+            //.insert(line);
+        }
+    }
+}
+
+
+
+
 
 ////----------------------------------------------------------------------------------------------
 /// Funtion pointer Indirect targets computation!!
-///
-///
-
+///Start:
 
 
 std::vector<Function*> moduleDepGraph::getPossibleCallees(CallSite cs)
@@ -1339,6 +1742,7 @@ std::vector<Function*> moduleDepGraph::getPossibleCallees(CallSite cs)
 
     return calledF;
 }
+
 
 
 static bool isAddressTaken(Value* V) {
@@ -1472,6 +1876,8 @@ void moduleDepGraph::ComputeIndMap(Module  &M)
     } //end for module iterator
 
 
-
-
 }
+
+////----------------------------------------------------------------------------------------------
+/// Funtion pointer Indirect targets computation!!
+///End/

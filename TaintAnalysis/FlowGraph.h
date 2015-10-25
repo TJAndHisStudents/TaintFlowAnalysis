@@ -6,6 +6,10 @@
 #endif
 
 #define USE_ALIAS_SETS true
+#define LIVENESS false
+#define LIVEPASS true
+#define USE_ALIAS true
+#define USE_DSA1 true
 
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Constants.h"
@@ -79,6 +83,7 @@ class MemoryOperation
     Value* assignedValue;
     string IdValue;
     Value * MemInst;
+    StoreInst * SI;
     bool hasVal = false;
     bool isParam;
     MemoryOperation();
@@ -97,8 +102,10 @@ private:
         int ID;
 
 
+
 protected:
         int Class_ID;
+        Value* value;
 public:
         bool tainted;
       //  std::string Name;
@@ -126,6 +133,9 @@ public:
         virtual std::string getLabel() = 0;
         virtual std::string getShape() = 0;
         virtual std::string getStyle();
+
+     //   virtual Value* getValue();
+
 
         virtual GraphNode* clone() = 0;
 };
@@ -197,6 +207,7 @@ public:
 
         std::string getLabel();
         std::string getShape();
+     //   Value* getValue();
 
         GraphNode* clone();
 };
@@ -228,6 +239,7 @@ public:
 
         std::string getLabel();
         std::string getShape();
+       // Value* getValue();
 
         GraphNode* clone();
 };
@@ -267,6 +279,7 @@ public:
         std::string getShape();
         GraphNode* clone();
         std::string getStyle();
+       // Value* getValue();
 
         int getAliasSetId() const;
 };
@@ -350,6 +363,8 @@ public:
         map<Function*,FuncParamInfo*>   functionParamMap;
       //  map<Function*,FuncParamInfo*>   funcParMapLocal;
 
+        set<Value*> FieldsVal;
+
 
 
 		Graph()
@@ -372,6 +387,9 @@ public:
 
         GraphNode* addInst(Value *v,int Instcounter, Function* Func); //Add an instruction into Dependence Graph
         GraphNode* addInst_new(Value *v);  //Adds the instruction in dep graph..updated.
+        GraphNode* addParamNode(Value *v, Function * func) ;  //Adds the parameter node for the function.
+
+        GraphNode* addGlobalVal(GlobalVariable *gv);
 
         void addEdge(GraphNode* src, GraphNode* dst, edgeType type = etData);
 

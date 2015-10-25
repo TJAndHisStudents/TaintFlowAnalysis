@@ -5,6 +5,11 @@
 // Global variables
 std::vector<BasicBlock *> ProcessedBB; //Stores processed basic block used in makeTable and findIR methods
 
+int numSources;
+int numSink;
+int numControlEdges;
+int numDirtyNodes;
+
 // opt -o parameter in order to force the optimization (new style of control dependence graph construction)
     cl::opt<bool> IsOptimized("optimized_taint", cl::desc("Specify whether to use optimized version (getting transitivity on control edges"), cl::desc("is optmized"));
 

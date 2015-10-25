@@ -39,14 +39,27 @@
 
 using namespace llvm;
 
-STATISTIC(PABaseCt,  "Counts number of base constraints");
-STATISTIC(PAAddrCt,  "Counts number of address constraints");
-STATISTIC(PALoadCt,  "Counts number of load constraints");
-STATISTIC(PAStoreCt, "Counts number of store constraints");
-STATISTIC(PANumVert, "Counts number of vertices");
-STATISTIC(PAMerges,  "Counts number of merged vertices");
-STATISTIC(PARemoves, "Counts number of calls to remove cycle");
-STATISTIC(PAMemUsage, "kB of memory");
+//STATISTIC(PABaseCt,  "Counts number of base constraints");
+//STATISTIC(PAAddrCt,  "Counts number of address constraints");
+//STATISTIC(PALoadCt,  "Counts number of load constraints");
+//STATISTIC(PAStoreCt, "Counts number of store constraints");
+//STATISTIC(PANumVert, "Counts number of vertices");
+//STATISTIC(PAMerges,  "Counts number of merged vertices");
+//STATISTIC(PARemoves, "Counts number of calls to remove cycle");
+//STATISTIC(PAMemUsage, "kB of memory");
+
+
+int PABaseCt;
+int PAAddrCt;
+int PALoadCt;
+int PAStoreCt;
+int PANumVert;
+int PAMerges;
+int PARemoves;
+int PAMemUsage;
+
+
+
 
 
 PADriver::PADriver() : ModulePass(ID) {

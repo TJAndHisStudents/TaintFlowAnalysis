@@ -39,7 +39,7 @@ bool TaintFlow::runOnModule(Module &M) {
 		targetFunctions = IV.getTargetFunctions();
 		targetBlocks = IV.getTargetBlock();
 		sourceTypes = IV.getSourceTypes();
-        targetVal = IV.getTargetValue();
+       // targetVal = IV.getTargetValue();
 	}
 	
 	blockAssign &bssa = getAnalysis<blockAssign> ();
@@ -85,7 +85,7 @@ bool TaintFlow::runOnModule(Module &M) {
     errs()<<"Number of total nodes updates: " <<NumNodes <<"\n\n";
     
 
-     PrintTainted(tainted);
+    // PrintTainted(tainted);
      errs()<<"\n---------------------\n";
    //TODO: Memory error in the insert... verify and solve...
     
@@ -98,7 +98,7 @@ bool TaintFlow::runOnModule(Module &M) {
        //  errs()<<" The tainted graph node : "<<(*G)->getName()<<"\n";
       }
       
-    errs()<<" \n \n";
+   // errs()<<" \n \n";
     
 
 
@@ -171,14 +171,14 @@ bool TaintFlow::runOnModule(Module &M) {
 
 //	);
 
-errs()<<"\n\n\n\n*********  Source Types ******************";
+//errs()<<"\n\n\n\n*********  Source Types ******************";
  for(std::set<SourceType*>::iterator st = sourceTypes.begin(); st!=sourceTypes.end();++st)
 	{
 		 (*st)->Print();
 	}
 
 
-errs()<<"\n\n\n\n*********  Derived Types ******************";
+//errs()<<"\n\n\n\n*********  Derived Types ******************";
  for(std::set<SourceType*>::iterator st = sourceTypesDerived.begin(); st!=sourceTypesDerived.end();++st)
 	{
 		 (*st)->Print();
@@ -308,11 +308,16 @@ void TaintFlow::PrintTainted(std::set<GraphNode*> tainted)
     for(set<GraphNode*>::iterator taintNode = tainted.begin();taintNode != tainted.end();++taintNode)
     {
         //errs()<<"\n Node Label : "<<(*taintNode)->getLabel();
-        errs()<<"--";
+       // errs()<<"--";
         if(isa<MemNode>(*taintNode))
         {
            // errs()<<"\n is mem node";
-            errs()<<"\n Node Label : "<<(*taintNode)->getLabel();
+            string nodeLab = (*taintNode)->getLabel();
+            string str = "sub_42BC4";
+            std::size_t found = nodeLab.find(str);
+            // if (found!=std::string::npos || 1)
+             {
+            errs()<<"\n Sink Node Tainted : "<<(*taintNode)->getLabel();
             MemNode * memNew = dyn_cast<MemNode>(*taintNode);
             Value * val = memNew->defLocation.second;
             std::set<Value*> aliases = memNew->getAliases();
@@ -324,6 +329,7 @@ void TaintFlow::PrintTainted(std::set<GraphNode*> tainted)
             {
                 (*alVal)->dump();
             }
+             }
 
         }
         if(isa<VarNode>(*taintNode))

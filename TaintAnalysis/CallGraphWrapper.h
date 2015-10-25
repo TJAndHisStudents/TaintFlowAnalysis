@@ -41,10 +41,42 @@
 #include "llvm/IR/DebugInfo.h"
 #include "InputDep.h"
 
-typedef std::vector<CallGraphNode*> Path;
-typedef std::vector<Path> PathSet;
+
 
 using namespace std;
+
+
+
+typedef struct {
+
+	std::string name = "";
+	std::vector<Function*> functionList;
+
+} IndCallerforCallee;
+
+typedef std::vector<IndCallerforCallee> IndCallerList;
+
+typedef struct {
+
+	std::string functionName = "";
+	std::vector<Function*> priorFunctionCallList;
+
+} customCallsite;
+
+typedef struct {
+	
+	std::string functionName = "";
+	Function* function;
+	Instruction* callInst;
+} instructionCallSite;
+
+typedef std::vector<customCallsite> ListofCallsite;
+
+typedef std::vector<instructionCallSite> Path;
+typedef std::vector<Path> PathSet;
+
+
+
 
  namespace llvm
 {
@@ -59,10 +91,6 @@ class CallGraphWrapper : public ModulePass  {
             //  bool runOnSCC(CallGraphSCC &SCC) override;
     public:
     CallGraph *CG;
-    CallGraph *subCG;
-    PathSet *callingPath;
-    PathSet *uniquePaths;
-    Path *uniquePath;
         static char ID;
         std::set<Function*> addressTaken;
         int nodeCount;
@@ -83,24 +111,26 @@ class CallGraphWrapper : public ModulePass  {
         CallGraphNode * getDefinedCallGraphNode(Function * F);
         std::map<CallSite, std::vector<Function*> >  getIndirectMap();
 
-    void findAllPaths(PathSet* pathSet,
-                    const std::string& start,
-                    const std::string& end,
-                    const int& max_hops,
-                    const int& min_hops);
-    void callGraphPaths(PathSet& pathSet,
-                    Path& visited,
-                    const std::string& end,
-                    const int& max_hops,
-                    const int& min_hops);
+	void findAllPaths(PathSet* pathSet,
+					const std::string& start,
+					const std::string& end);
+	void OtherFunction(PathSet& pathSet,
+					Path& visited,
+					const std::string& end,
+					IndCallerList* indirectCallerList);
 
-    bool ContainsNode( Path& nodes, CallGraphNode* node);
+    	bool ContainsFunction( std::vector<Function*> functionList, Function* func);
+	bool isOnPath( Path& functionStructs, Function* func);
+	void createReverseMapping(IndCallerList* indirectCallerList);
+	void printContextSensitiveCalls(std::vector<Function*> functionList);
+	void printContextSensitivePaths(PathSet pathSets);
 
+    //
 
+    PathSet callPathsAll;
 
-
-
-
+      PathSet callPathSets;
+     PathSet getCallPaths();
 
 };
 

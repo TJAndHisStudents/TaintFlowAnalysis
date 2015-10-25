@@ -33,15 +33,13 @@
 #include <stack>
 
 
-
-
 namespace llvm {
 
 
-	STATISTIC(numSources, "Number of secret information sources");
-	STATISTIC(numSink, "Number of public channels (printf etc.)");
-	STATISTIC(numControlEdges, "Number control edges in dependence graph");
-	STATISTIC(numDirtyNodes, "Number of tainted nodes");
+//	STATISTIC(numSources, "Number of secret information sources");
+//	STATISTIC(numSink, "Number of public channels (printf etc.)");
+//	STATISTIC(numControlEdges, "Number control edges in dependence graph");
+//	STATISTIC(numDirtyNodes, "Number of tainted nodes");
 
 
 	// Auxiliar class for store one predicate and its gated instructions

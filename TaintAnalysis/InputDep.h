@@ -32,6 +32,8 @@ public:
     void Print();
 };
 
+
+
 //Class to store the structs identofoed to be assigned the fp value:
 class SourceType {
 	private:
@@ -57,6 +59,7 @@ class InputDep : public ModulePass {
 		std::set<std::string>  targetNames;
 		std::set<SourceType*> sourceTypes;
         std::set<TaintSource*> taintSources;
+//        std::set<RelevantFields*> relevantFields;
         std::set<Value*> inputUses;
 		bool runOnModule(Module &M);
 	public:
@@ -69,6 +72,7 @@ class InputDep : public ModulePass {
 		bool isInputDependent(Value* V);
 		std::set<Value*> getInputDepValues();
 		std::set<SourceType*> getSourceTypes();
+//        std::set<RelevantFields*>  getFields();
         void ListAllUses(Value* Input, Function *F);
 		int getLineNo(Value*);
 		void printer();
@@ -76,6 +80,7 @@ class InputDep : public ModulePass {
 		void ReadTargets();
 		void ReadFPTargets();
         void ReadTaintInput();
+//        void ReadRelevantFields();
 };
 
 #endif
