@@ -30,4 +30,5 @@ This code is compatible with LLVM 3.5
 		lookup   : Lookup functions for the resource lookup.
 		callPath : The relevant functions in the call paths between the sources and sinks.
 		funcInfo : Function caller callee information.. for context and function boundary determination.
+		fields   : Contains the function, variable and field indices for relevant fields to track.
 
