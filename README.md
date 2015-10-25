@@ -5,7 +5,8 @@ This code generates taint flow information for the binary lifted bitcode files. 
 Prerequisites
 ------
 1. LLVM 3.5 with corresponding clang (installed from Source http://llvm.org/releases/download.html 3.5 sources)
-2. Follow the instructions for installation of LLVM, might need g++ installed which is not specified explicitly in the instructions. 
+2. Uses DSA pointer analysis and is required as a prereuisite pass before analysis.
+3. Follow the instructions for installation of LLVM, might need g++ installed which is not specified explicitly in the instructions. 
 
 Inputs Required:
 ------
