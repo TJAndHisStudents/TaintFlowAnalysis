@@ -22,6 +22,7 @@
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/IR/CFG.h"
+//#include "llvm/Analysis/Dominators.h"
 //#include "DepGraph.h"
 #include "InputValues.h"
 #include "InputDep.h"
@@ -38,14 +39,18 @@ using namespace llvm;
 class TaintFlow : public ModulePass {
 	private:
 		Graph* depGraph;
-		std::set<Value*> inputDepValues;
+        std::set<Value*> inputDepValues;
+        std::map<Value*, std::string> ValLabelmap;
 		std::set<CallInst*> targetFunctions;
 		std::set<BasicBlock*> targetBlocks;
 		std::set<SourceType*> sourceTypes;
 		std::set<SourceType*> sourceTypesDerived;
+        std::set<std::string> mediatorFunctions;
+        std::set<QueryInput*> queryinputs;
 		bool runOnModule(Module &M);
 		bool isValueInpDep(Value* V);
 		std::set<GraphNode*> tainted;
+        std::map<Value*, set<GraphNode*> > taintGraphMap;
         Value * targetVal;
 	public:
 		static char ID;
@@ -57,6 +62,7 @@ class TaintFlow : public ModulePass {
 		void getHookLocation();
 		void testProcessing();
         void PrintTainted(std::set<GraphNode*> tainted);
+        void HandleQueries(Module &M);
 		TaintFlow();
 
 };

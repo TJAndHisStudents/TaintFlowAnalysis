@@ -6,7 +6,7 @@
 #endif
 
 #define USE_ALIAS_SETS true
-#define LIVENESS false
+#define LIVENESS true
 #define LIVEPASS true
 #define USE_ALIAS true
 #define USE_DSA1 true
@@ -40,7 +40,7 @@
 #include <cstdlib>
 #include <iostream>
 #include "llvm/IR/DebugInfo.h"
-#include "InputDep.h"
+//#include "InputDep.h"
 
 using namespace std;
 
@@ -357,6 +357,8 @@ public:
         map<Value*,set<MemoryOperation*> > LiveMap;
         map<Value*,set<MemoryOperation*> > BackupLiveMap;
         map<CallSite*, map<Value*,GraphNode*> > callParamNodeMap;
+
+        DenseMap<int, set<Value*> > AliasMap;
         
         map<CallInst *,CallSiteMap *>     CallSiteParams;
 
@@ -376,6 +378,7 @@ public:
         Graph(AliasSets *AS) :
                 AS(AS) {
                 NrEdges = 0;
+                AliasMap = AS->getValueSets();
         }
         ; //Constructor 
         ~Graph(); //Destructor - Free adjacent matrix's memory
@@ -432,6 +435,8 @@ public:
            bool isMemoryPointer(Value *v); //Return true if the value is a memory pointer
 
         void deleteCallNodes(Function* F);
+
+        void updateMemNodeLabels(); //Updates the mem node labels to val name if only one symbol used for display.
 
         /*
          * Function getNearestDependence

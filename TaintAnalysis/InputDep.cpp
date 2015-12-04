@@ -22,6 +22,11 @@ TaintSource::TaintSource()
 
 }
 
+QueryInput::QueryInput()
+{
+
+}
+
 void TaintSource::Print()
 {
     errs()<<"\n InputValues:in Function :  "<<functionName<< "   Variable " << variable;
@@ -42,6 +47,9 @@ cl::opt<std::string> SourceFile("taintSource", cl::desc("<Taint Source file>"), 
 cl::opt<std::string> LookupFile("lookup", cl::desc("<Lookup file>"), cl::init("-"));
 
 cl::opt<std::string> fpFile("fp", cl::desc("<FP Function targets file>"), cl::init("-"));
+cl::opt<std::string> mediatorFile("mediator", cl::desc("<Mediator Source file>"), cl::init("-"));
+cl::opt<std::string> sinkFile("sinkFile", cl::desc("<sink function file>"), cl::init("-"));
+cl::opt<std::string> queriesFile("query", cl::desc("<Query input file>"), cl::init("-"));
 
 
 //TODO: Verify signature
@@ -73,8 +81,9 @@ bool InputDep::runOnModule(Module &M) {
 	if (main) {
 		MDNode *mdn = main->begin()->begin()->getMetadata("dbg");
 		for (Function::arg_iterator Arg = main->arg_begin(), aEnd =
-				main->arg_end(); Arg != aEnd; Arg++) {
-			inputDepValues.insert(Arg);
+                main->arg_end(); Arg != aEnd; Arg++) {
+            inputDepValues.insert(Arg);
+            ValLabelmap[Arg] = (*Arg).getName();
 			NumInputValues++;
 			if (mdn) {
 				DILocation Loc(mdn);
@@ -89,9 +98,25 @@ bool InputDep::runOnModule(Module &M) {
 	 ReadTargets();
 	 ReadFPTargets();
      ReadTaintInput();
+     ReadMediatorInput();
+     ReadSinkInput();
+     ReadQueryInput();
 //     ReadRelevantFields();
 
-     errs() << "Taint Inputs REad: " << taintSources.size();
+
+
+
+
+    errs()<<"\n Read queries: ";
+    for(set<QueryInput*>::iterator qit =queryInputs.begin();qit!=queryInputs.end();++qit)
+    {
+        errs()<<"\n Operation : "<<(*qit)->operation;
+        set<string> labels = (*qit)->labels;
+        for(set<string>::iterator label = labels.begin();label != labels.end();++label)
+            errs()<<"  "<<*label;
+    }
+
+     errs() << "\nTaint Inputs REad: " << taintSources.size();
 
     set<Value*> storedVals;
     set<Value*> repeatVals;
@@ -99,7 +124,13 @@ bool InputDep::runOnModule(Module &M) {
     //Taint Global Vars;
 
 
-    //errs()<<"\n\n ******* Processing globals..";
+   // errs()<<"\n\n ******* TaintSource Size :.."<<taintSources.size();
+//    for(std::set<TaintSource*>::iterator ts = taintSources.begin();ts != taintSources.end(); ++ts)
+//    {
+//        errs()<<"\n\n Function :"<<(*ts)->functionName<<" var :  "<<(*ts)->variable<<"  label : "<<(*ts)->label;
+//    }
+
+
     for(std::set<TaintSource*>::iterator ts = taintSources.begin();ts != taintSources.end(); ++ts)
     {
         //  std::string funcName= F->getName();
@@ -107,7 +138,7 @@ bool InputDep::runOnModule(Module &M) {
         std::string glob = "global";
         if(std::strcmp(glob.c_str(),(*ts)->functionName.c_str())==0)
         {
-           // errs()<<"\n\n *******Op Name from file.. .. for gloabl " <<(*ts)->variable;
+     //       errs()<<"\n\n *******Op Name from file.. .. for gloabl " <<(*ts)->variable;
             for (Module::global_iterator GVI = M.global_begin(), E = M.global_end();
                  GVI != E; ) {
                 GlobalVariable *GV = GVI++;
@@ -124,6 +155,7 @@ bool InputDep::runOnModule(Module &M) {
                 {
                     // errs()<<"\nOp Name "<<  opName <<" and " <<(*ts)->variable;
                     inputDepValues.insert(GV_Val);
+                    ValLabelmap[GV_Val] = (*ts)->label;
 
                     //Also add all the uses of the global in the tainted set..
                     //GV->use_begin();
@@ -141,6 +173,7 @@ bool InputDep::runOnModule(Module &M) {
                           //  Value* assignedVal = SI->getValueOperand();
                             Value* pointerOperand = SI->getPointerOperand();
                             inputDepValues.insert(pointerOperand);
+                            ValLabelmap[pointerOperand] = (*ts)->label;
                             NumInputValues++;
 
                         }
@@ -151,6 +184,7 @@ bool InputDep::runOnModule(Module &M) {
                            //  Value* assignedVal = SI->getValueOperand();
                             // Value* pointerOperand = LI->get
                              inputDepValues.insert(LI);
+                             ValLabelmap[LI] = (*ts)->label;
                              NumInputValues++;
                         }
 
@@ -162,6 +196,7 @@ bool InputDep::runOnModule(Module &M) {
                             //Quick fix.. taint call return val since global constants mostly used in lib calls.
                             Value * UserVal = (*GV_UI);
                             inputDepValues.insert(UserVal);
+                            ValLabelmap[UserVal] = (*ts)->label;
                             NumInputValues++;
 
                         }
@@ -172,6 +207,7 @@ bool InputDep::runOnModule(Module &M) {
                             // (*GV_UI)->dump();
                             Value * UserVal = (*GV_UI);
                             inputDepValues.insert(UserVal);
+                            ValLabelmap[UserVal] = (*ts)->label;
                             NumInputValues++;
 
                         }
@@ -463,8 +499,10 @@ bool InputDep::runOnModule(Module &M) {
                 for(std::set<TaintSource*>::iterator ts = taintSources.begin();ts != taintSources.end(); ++ts)
                 {
                     std::string funcName= F->getName();
+
                     if(strcmp(funcName.c_str(),(*ts)->functionName.c_str())==0)
                       {
+      //                  errs()<<"\nFunction Name "<<  funcName;
                         if(I->hasName())
                           {
                             std::string iName = I->getName();
@@ -486,10 +524,11 @@ bool InputDep::runOnModule(Module &M) {
                         {
                             Value* operand = I->getOperand(i);
                             std::string opName = operand->getName();
-                           // errs()<<"\nOp Name "<<  opName <<" and " <<(*ts)->variable;
+  //                          errs()<<"\nOp Name "<<  opName <<" and " <<(*ts)->variable;
                             if(opName==(*ts)->variable)
                             {
                                 inputDepValues.insert(operand);
+                                ValLabelmap[operand] = (*ts)->label;
                              //   ListAllUses(operand,F);
                                 if (MDNode *mdn = I->getMetadata("dbg")) {
                                     NumInputValues++;
@@ -548,8 +587,9 @@ bool InputDep::runOnModule(Module &M) {
 
 						if (Name.equals("main")) {
 							errs() << "main\n";
-							V = CI->getArgOperand(1); //char* argv[]
-							inputDepValues.insert(V);
+                            V = CI->getArgOperand(1); //char* argv[]
+                            inputDepValues.insert(V);
+                            ValLabelmap[V] = V->getName();
 							inserted = true;
                             if(debug) errs() << "Input  main args  " << *V << "\n";
                              if(debug) errs() << "In Function  " <<F->getName()<<"\n";
@@ -558,6 +598,7 @@ bool InputDep::runOnModule(Module &M) {
                         //GEtting the return value from socket call as the input..!!
                         if (Name.equals("socket")) {
                             inputDepValues.insert(CI);
+                            ValLabelmap[CI] = CI->getName();
                             inserted = true;
                             if(debug) errs() << "Input fgetc,getchar   " << *CI << "\n";
                              if(debug) errs() << "In Function  " <<F->getName()<<"\n";
@@ -664,6 +705,33 @@ bool InputDep::runOnModule(Module &M) {
     }
     */
 
+
+
+
+    //map labels to values for queries.
+    for(set<QueryInput*>::iterator qit =queryInputs.begin();qit!=queryInputs.end();++qit)
+    {
+        //errs()<<"\n Operation : "<<(*qit)->operation;
+        set<string> labels = (*qit)->labels;
+        set<Value*> vals;
+        for(set<string>::iterator labit = labels.begin();labit != labels.end();++labit)
+        {
+            for(std::map<Value*, std::string>::iterator valit =  ValLabelmap.begin(); valit != ValLabelmap.end();++valit)
+             {
+                string lab = (*valit).second;
+                if(strcmp(lab.c_str(),(*labit).c_str())==0)
+                {
+                    vals.insert((*valit).first);
+                    errs()<<"\n Found map : "<<lab<<" value :";
+                    (*valit).first->dump();
+                }
+            }
+
+        }
+        (*qit)->labVals = vals;
+           // errs()<<"  "<<*label;
+    }
+
     DEBUG(printer());
 	printer();
 	return false;
@@ -769,9 +837,9 @@ void InputDep::ListAllUses(Value* Input, Function* F)
 
 void InputDep::printer() {
 	errs() << "\n\n===Input dependant values:====\n";
-	for (std::set<Value*>::iterator i = inputDepValues.begin(), e =
+    for (std::set<Value*>::iterator i = inputDepValues.begin(), e =
 			inputDepValues.end(); i != e; ++i) {
-		errs() << **i << "\n";
+        errs() << **i << "\n";
 	}
 	errs() << "=============Target Functions==============\n";
 		for (std::set<std::string>::iterator t = targetNames.begin(), en =
@@ -839,30 +907,130 @@ void InputDep::ReadFPTargets(){
 
 void InputDep::ReadTaintInput(){
 
-     std::ifstream srcFile (SourceFile.c_str(), std::ifstream::in);
-        std::string line;
-        if(!srcFile)
+    std::ifstream srcFile (SourceFile.c_str(), std::ifstream::in);
+    std::string line;
+    if(!srcFile)
+    {
+        errs() << " Could not open the taint Input file \n";
+    }
+    else
+    {
+        while(srcFile >> line)
         {
-            errs() << " Could not open the taint Input file \n";
-        }
-        else
-        {
-            while(srcFile >> line)
+            line.erase( std::remove_if( line.begin(), line.end(), ::isspace ), line.end() );
+            TaintSource * ts = new TaintSource();
+            ts->functionName = line;
+            if(srcFile >> line)
             {
                 line.erase( std::remove_if( line.begin(), line.end(), ::isspace ), line.end() );
-                TaintSource * ts = new TaintSource();
-                ts->functionName = line;
-                if(srcFile >> line)
-                { line.erase( std::remove_if( line.begin(), line.end(), ::isspace ), line.end() );
                 ts->variable = line;
-                taintSources.insert(ts);
+                if(srcFile >> line)
+                {
+                    line.erase( std::remove_if( line.begin(), line.end(), ::isspace ), line.end() );
+                    ts->label = line;
+                    taintSources.insert(ts);
                 }
-                //.insert(line);
+                else
+                {
+                    ts->label = ts->variable;
+                    taintSources.insert(ts);
+                }
+
             }
+            //.insert(line);
         }
+    }
+}
+
+void InputDep::ReadMediatorInput(){
+
+    std::ifstream srcFile (mediatorFile.c_str(), std::ifstream::in);
+    std::string line;
+    if(!srcFile)
+    {
+        errs() << " Could not open the taint Input file \n";
+    }
+    else
+    {
+        while(srcFile >> line)
+        {
+            line.erase( std::remove_if( line.begin(), line.end(), ::isspace ), line.end() );
+            mediatorFunctions.insert(line);
+        }
+    }
 }
 
 
+void InputDep::ReadSinkInput(){
+
+    std::ifstream srcFile (sinkFile.c_str(), std::ifstream::in);
+    std::string line;
+    if(!srcFile)
+    {
+        errs() << " Could not open the taint Input file \n";
+    }
+    else
+    {
+        while(srcFile >> line)
+        {
+            line.erase( std::remove_if( line.begin(), line.end(), ::isspace ), line.end() );
+            sinkFunctions.insert(line);
+        }
+    }
+}
+
+void InputDep::ReadQueryInput(){
+
+    std::ifstream srcFile (queriesFile.c_str(), std::ifstream::in);
+    std::string line;
+    if(!srcFile)
+    {
+        errs() << " Could not open the query Input file \n";
+    }
+    else
+    {
+        set<string> labels;
+        bool end = false;
+        if(srcFile >> line)
+        {
+            while(!end)
+            {
+
+                line.erase( std::remove_if( line.begin(), line.end(), ::isspace ), line.end() );
+                //check if new record is to be created.
+                if((strcmp(line.c_str(),"union")==0) || (strcmp(line.c_str(),"intersect")==0))
+                {
+                    QueryInput * qi = new QueryInput();
+                    labels.clear();
+                    qi->operation = line;
+                    end = true;
+
+                    while(srcFile >> line)
+                    {
+                        line.erase( std::remove_if( line.begin(), line.end(), ::isspace ), line.end() );
+                        if((strcmp(line.c_str(),"union")!=0) && (strcmp(line.c_str(),"intersect")!=0))
+                        {
+                            labels.insert(line);
+                            if(strcmp(line.c_str(),"constant")==0)
+                                qi->constcheck = true;
+                            //    qi->labels.insert(line);
+                        }
+                        else
+                        {
+                            end = false;
+                            break;
+                        }
+
+
+                    }
+                    qi->labels = labels;
+                    queryInputs.insert(qi);
+                    //.insert(line);
+                }
+            } //end while
+        } //end if
+    }
+}
 
 
 void InputDep::getAnalysisUsage(AnalysisUsage &AU) const {
@@ -873,6 +1041,25 @@ std::set<Value*> InputDep::getInputDepValues() {
 	return inputDepValues;
 }
 
+std::set<std::string> InputDep::getMediators() {
+    return mediatorFunctions;
+}
+
+std::set<std::string> InputDep::getSinks() {
+    return sinkFunctions;
+}
+
+std::map<Value*,std::string> InputDep::getValueLabelMap()
+{
+    return ValLabelmap;
+}
+
+//getQueryVals
+
+std::set<QueryInput*> InputDep::getQueryVals()
+{
+    return queryInputs;
+}
 
 std::set<std::string> InputDep::getTargetNames() {
 	return targetNames;

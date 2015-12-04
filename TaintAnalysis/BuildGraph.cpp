@@ -4,9 +4,7 @@
 
 #include "llvm/ADT/PostOrderIterator.h"
 #define debug false
-#define code true
-
-
+#define code false
 
 
 #define ProcessCallSiteFrequency 5
@@ -19,9 +17,18 @@ CallSiteMap::CallSiteMap()
 
 }
 
+
+///Class RelevantFields
+///
+RelevantFields::RelevantFields()
+{
+
+}
+
+
 cl::opt<std::string> CallPathFile("callPath", cl::desc("<Source sink call path functions>"), cl::init("-"));
 cl::opt<std::string> Fields("fields", cl::desc("<Relevant fields file>"), cl::init("-"));
-
+static cl::opt<bool, false> fullAnalysis("fullAnalysis", cl::desc("Long analysis"), cl::NotHidden);
 
 //Class functionDepGraph
 void functionDepGraph::getAnalysisUsage(AnalysisUsage &AU) const {
@@ -83,6 +90,9 @@ bool moduleDepGraph::runOnModule(Module &M) {
 
     callPaths = cgWrapper.getCallPaths();
 
+    //Read the relevant tainted fields supplied to the code to make it field sensitive.
+    ReadRelevantFields();
+
     //if(USE_DSA1) //need to do this irrespective of the flag, null initialize not allowed.
     BUDataStructures &BU_ds = getAnalysis<BUDataStructures>();
 
@@ -117,12 +127,12 @@ bool moduleDepGraph::runOnModule(Module &M) {
                 Function *F = SCC[i]->getFunction();
                 if (F && !F->isDeclaration()) {
                     //Check if the functions is on the call strings.
-                    if(isFunctiononCallString(F))
+               //     if(isFunctiononCallString(F))
                     {
 
                         Graph* Fdep = new Graph(AS);
-                        if(code) errs()<<"\n\n Processing function fdep graph.. for "<<F->getName();
-                        Process_Functions(F,Fdep,SensitivityDepth);
+                   //     if(code) errs()<<"\n\n Processing function fdep graph.. for "<<F->getName();
+                  //      Process_Functions(F,Fdep,SensitivityDepth);
                         if(code) errs()<<"\n Processing function topdown graph.. for "<<F->getName()<<"\n";
                         Process_Functions(F,TopDownGraph,SensitivityDepth);
                           FuncDepGraphs[F] = Fdep;
@@ -131,7 +141,7 @@ bool moduleDepGraph::runOnModule(Module &M) {
                         std::string Filename = "../../demo1_" + tmp + ".dot";
                         //string fileName = "../../"+F->getName()+"_graph.dot";
                         //    errs()<<"\n Processing Function ******************* "<<F->getName();
-                        Fdep->toDot(F->getName(),Filename);
+             //           Fdep->toDot(F->getName(),Filename);
                     }
 
                 }
@@ -193,7 +203,7 @@ bool moduleDepGraph::runOnModule(Module &M) {
 
     std::string Filename = "../../noConstTopDownGraph.dot";
     errs()<<"\n Writing dot for **************** ..TopDownGraph";
-    TopDownGraph->toDot("TopDown",Filename);
+  //  TopDownGraph->toDot("TopDown",Filename);
 
     //We don't modify anything, so we must return false
     return false;
@@ -474,21 +484,21 @@ void moduleDepGraph::InitializePointtoGraphs(Module &M,BUDataStructures &BU_ds)
 
             //Writes the Points to graph in dot files..
 
-            std::string ErrorInfo;
-            // sys::fs::OpenFlags Flags;
-            std::string fileName = "DSGraphInfo.txt";
-            // nodeCount =0;
-            raw_fd_ostream File(fileName.c_str(), ErrorInfo,sys::fs::F_None);
+//            std::string ErrorInfo;
+//            // sys::fs::OpenFlags Flags;
+//            std::string fileName = "DSGraphInfo.txt";
+//            // nodeCount =0;
+//            raw_fd_ostream File(fileName.c_str(), ErrorInfo,sys::fs::F_None);
 
-            if (!ErrorInfo.empty()) {
-                errs() << "Error opening file " << fileName
-                       << " for writing! Error Info: " << ErrorInfo << " \n";
-                return;
-            }
+//            if (!ErrorInfo.empty()) {
+//                errs() << "Error opening file " << fileName
+//                       << " for writing! Error Info: " << ErrorInfo << " \n";
+//                return;
+//            }
 
-            std::string funcNames = PointstoGraph->getFunctionNames();
+//            std::string funcNames = PointstoGraph->getFunctionNames();
 
-            PointstoGraph->writeGraphToFile(File,"../../TestFiles/"+funcNames);
+//            PointstoGraph->writeGraphToFile(File,"../../TestFiles/"+funcNames);
         }
 
     }
@@ -529,12 +539,17 @@ void moduleDepGraph::Process_Functions(Function* F, Graph* F_Graph, int SensDept
 {
     //Check if call path already processed if yes, dont process and return, else process with the appropriate context.
 
-    if(debug) errs()<<"\n Processing funtion recursive.. "<< F->getName() <<"  ";
+   // if(debug)
+        errs()<<"\n Processing funtion recursive.. "<< F->getName() <<"  ";
     MDA = &getAnalysis<MemoryDependenceAnalysis>((*F));
+
+    //Reset F_graph's store node map.
+    F_Graph->StoreNodeMap.clear();
+
 
     //Add nodes for function parameters..
     for (Function::arg_iterator Arg = F->arg_begin(), aEnd = F->arg_end(); Arg != aEnd; Arg++) {
-        Arg->dump();
+       // Arg->dump();
         GraphNode * pNode = F_Graph->addParamNode(Arg ,F);
     }
 
@@ -588,12 +603,12 @@ void moduleDepGraph::Process_Functions(Function* F, Graph* F_Graph, int SensDept
 
 
     //Write the Graph in the dot file
-    std::string tmp = F->getName();
+//    std::string tmp = F->getName();
     // replace(tmp.begin(), tmp.end(), '\\', '_');
-    std::string Filename = "../../demo1_" + tmp + ".dot";
+ //   std::string Filename = "../../demo1_" + tmp + ".dot";
     //string fileName = "../../"+F->getName()+"_graph.dot";
     //errs()<<"\n Processing Function ******************* "<<F->getName();
-    F_Graph->toDot(F->getName(),Filename);
+  //  F_Graph->toDot(F->getName(),Filename);
 
     //if the sensitivity depth is not zero, then process the functions called in this function.
     /*
@@ -621,19 +636,258 @@ void moduleDepGraph::Process_Functions(Function* F, Graph* F_Graph, int SensDept
     }
     */
 
+
+    //Print storeNode map for the function..!!
+    if(code)
+    {
+        for(map<Value*,GraphNode*>::iterator stMap= F_Graph->StoreNodeMap.begin(); stMap != F_Graph->StoreNodeMap.end();++stMap)
+        {
+            errs()<<"\n========";
+            Value *SI = (*stMap).first;
+            SI->dump();
+            GraphNode * gNode = (*stMap).second;
+            if(gNode!=NULL)
+            {
+                if(isa<MemNode>(gNode))
+                {
+                    MemNode* mNode = dyn_cast<MemNode>(gNode);
+                    errs()<<" ------ Mem node label: --"<<mNode->getLabel();
+                }
+            }
+        }
+        errs()<<"\n========";
+    }
+
+
     ///Bakward processing pass to process all loads..
 
-    BasicBlock* TermBlock = &F->back();
-    map<Value*, set< Value*> > LoadQueue;
-    LoadStoreMap(LoadQueue,TermBlock,F_Graph);
+    if(fullAnalysis)
+    {
+        // BasicBlock* TermBlock = &F->back();
+        map<Value*, set< Value*> > LoadQueue;
+        //  LoadStoreMap(LoadQueue,TermBlock,F_Graph);
+ //       errs()<<"\n CAlling BFS for function "<< F->getName();
+        BFSLoadStoreMap(LoadQueue,F,F_Graph);
+    }
+
+}
+
+
+///Function: BFSLoadStoreMap
+/// Reverse trackign function used for attaching the loads to appropriate stores..
+void moduleDepGraph::BFSLoadStoreMap(map<Value*, set< Value*> > LoadQueue, Function* F, Graph * F_Graph)
+{
+  //  BasicBlock* ProcBlock = &F->back();
+    //Process block for loads and stores..
+//    if(code)
+//    {
+//        //Print the load queue for the block ...
+//        errs()<<"\n\n------ Reverse------- Processing Block :"<<ProcBlock->getName();
+//        for(map<Value*, set< Value*> >::iterator Qit = LoadQueue.begin();Qit!= LoadQueue.end();++Qit)
+//        {
+//            Value* LoadPtr = (*Qit).first;
+//            errs()<<"\nLoad ptr :";
+//            LoadPtr->dump();
+//            errs()<<"\n Load insts :";
+//            set<Value *> loadI = (*Qit).second;
+//            for(set< Value*>::iterator LI_IT = loadI.begin(); LI_IT != loadI.end(); ++LI_IT)
+//            {
+//                (*LI_IT)->dump();
+//            }
+
+//        }
+//    }
+
+    set<BasicBlock*> processedsuccBlocks;
+    bool removeLoads = false;
+
+ //   errs()<<"\n\n\n Processing Function : "<<F->getName();
+
+    //Reverse process all blocks in function F until the begin. ..
+    // merge peration..
+    for (Function::iterator BB = --F->end(), endBB = F->begin(); BB != endBB; BB--)
+    {
+
+        BasicBlock * ProcBlock = (BB);
+
+        //Check if all the succ blocks have been processed if so set the flag to remove mapped loads..
+
+        //processedsuccBlocks
+       // for()
+        const TerminatorInst *TInst = ProcBlock->getTerminator();
+        for (unsigned I = 0, NSucc = TInst->getNumSuccessors(); I < NSucc; ++I) {
+          BasicBlock *Succ = TInst->getSuccessor(I);
+           if(processedsuccBlocks.count(Succ)>0)
+                removeLoads = true;
+           else
+               removeLoads = false;
+        }
+        processedsuccBlocks.insert(ProcBlock);
+
+//        if(removeLoads)
+//            errs()<<"\n---------------------- Processing block: "<<ProcBlock->getValueName();
+//        else
+     //       errs()<<"\n Processing block: "<<ProcBlock->getValueName();
+
+        for (BasicBlock::reverse_iterator Iit = ProcBlock->rbegin(), Iend = ProcBlock->rend(); Iit != Iend; ++Iit)
+        {
+
+            Function* parentFunc = ProcBlock->getParent();
+            //check if load and update queue..
+            if(isa<LoadInst>(&*Iit))
+            {
+                LoadInst *LI = dyn_cast<LoadInst>(&*Iit);
+                //Update the loadinst queue for load ptr..
+                Value * LoadPtr = LI->getOperand(0);
+                set< Value*> LoadInsts = LoadQueue[LoadPtr];
+             //   errs()<<"\n  adding loads  ";
+                LoadInsts.insert(LI);
+                LoadQueue[LoadPtr] = LoadInsts;
+
+                //TODO: Check if we need to add for the root ptr as well.. if not then done..
+
+            }
+
+            //check if store and maps to any load...
+            if(isa<StoreInst>(&*Iit))
+            {
+                StoreInst *SI = dyn_cast<StoreInst>(&*Iit);
+                Value * StorePtr = SI->getPointerOperand();
+                Value * StoreRootPtr = SI->getPointerOperand();
+                bool gepInst_S = false;
+                if(isa<GetElementPtrInst>(StorePtr))
+                {
+                    //    errs()<<"\nStore is is a GEP..!!";
+                    //get root
+                    gepInst_S = true;
+                    GetElementPtrInst* GI = dyn_cast<GetElementPtrInst>(StorePtr);
+                    StoreRootPtr =  GI->getPointerOperand();
+                }
+                //Iterate through the Queue..
+                set<Value*> loadKeystobeRemoved;
+
+            //    errs()<<"\n LoadQueue Size : "<<LoadQueue.size();
+                for(map<Value*, set< Value*> >::iterator loadQIt = LoadQueue.begin();loadQIt != LoadQueue.end(); ++loadQIt)
+                {
+                    bool gepInst_L = false;
+                    Value* LoadPtr = (*loadQIt).first;
+                    Value* LoadRootPtr = (*loadQIt).first;
+                    if(isa<GetElementPtrInst>(LoadPtr))
+                    {
+                        // errs()<<"\n\n\n IT is a GEP..!!";
+                        //get root
+                        gepInst_L = true;
+                        GetElementPtrInst* GI = dyn_cast<GetElementPtrInst>(LoadPtr);
+                        LoadRootPtr =  GI->getPointerOperand();
+                    }
+
+                    if(checkPointer(LoadPtr,StorePtr,parentFunc))
+                    {
+                        GraphNode * stNode = F_Graph->StoreNodeMap[SI];
+
+                        if(code)
+                        {errs()<<"\n Store found for load : ";
+                            LoadPtr->dump();
+                            errs()<<" -------- Store inst  : ";
+                            SI->dump();
+                            errs()<<" --------Node   : ";
+                            if(stNode != NULL)
+                            { if(isa<MemNode>(stNode))
+                                {
+                                    MemNode* mNode = dyn_cast<MemNode>(stNode);
+                                    errs()<<" ------ Mem node label: --"<<mNode->getLabel();
+                                }
+                                //stNode->getLabel();
+                            }
+                            else
+                                errs()<<" NULL \n";
+
+                        }
+
+
+                        if(stNode != NULL)
+                        {
+                            //Iterate through all load inst for that pointer..
+                            set< Value*> LoadInsts = (*loadQIt).second;
+                            for(set< Value*>::iterator LI_IT = LoadInsts.begin(); LI_IT != LoadInsts.end(); ++LI_IT)
+                            {
+                                GraphNode * ldNode = F_Graph->findNode(*LI_IT);
+                                if(ldNode != NULL )
+                                {
+                                    if(isa<MemNode>(stNode))
+                                    {
+                                        MemNode* mNode = dyn_cast<MemNode>(stNode);
+                                        //stNode->connect(ldNode);
+                                        mNode->connect(ldNode,etData);
+                                    }
+                                    // if(code) errs()<<"\n +++++ Connecting the pointer nodes...  "<<stNode->getLabel()<<" -- "<<ldNode->getLabel()<<" for ptrs ";
+                                    //if(code) StorePtr->dump();
+                                    //if(code) LoadPtr->dump();
+                                }
+                            }
+                        }
+
+                        if(removeLoads)
+                        {
+                       //     errs()<<"\nREmove loads true and match for load found..";
+                            loadKeystobeRemoved.insert((*loadQIt).first);
+                        }
+
+                    }
+                }
+                for(set<Value*>::iterator ldIt = loadKeystobeRemoved.begin();ldIt != loadKeystobeRemoved.end();++ldIt)
+                {
+           //         errs()<<"\n Erasing load ...... :"<<LoadQueue.size();
+               //     (*ldIt)->dump();
+                    LoadQueue.erase(*ldIt);
+            //        errs()<<" after removal.."<<LoadQueue.size();
+                }
+
+            }
+        }
+
+    }
+    //Recursive call on all preds for LoadQueue.
+    //    for (pred_iterator PI = pred_begin(ProcBlock), E = pred_end(ProcBlock); PI != E; ++PI) {
+    //        BasicBlock *Pred = *PI;
+    //        int processedSize = BT_ProcessedBlocks.size();
+    //        BT_ProcessedBlocks.insert(Pred);
+    //        //Don't process preds if current block processed..
+    //        if(processedSize!=BT_ProcessedBlocks.size())
+    //        {
+    //            //errs()<<"\n Prcessed Block Size --- "<<ProcessedBlocks.size();
+    //            LoadStoreMap(LoadQueue,Pred,F_Graph);
+    //        }
+    //    }
+
 
 }
 
 
 
+///Function: LoadStoreMap
+/// Reverse trackign function used for attaching the loads to appropriate stores..
 void moduleDepGraph::LoadStoreMap(map<Value*, set< Value*> > LoadQueue,BasicBlock* ProcBlock, Graph * F_Graph)
 {
     //Process block for loads and stores..
+    if(code)
+    {
+        //Print the load queue for the block ...
+        errs()<<"\n\n------ Reverse------- Processing Block :"<<ProcBlock->getName();
+        for(map<Value*, set< Value*> >::iterator Qit = LoadQueue.begin();Qit!= LoadQueue.end();++Qit)
+        {
+            Value* LoadPtr = (*Qit).first;
+            errs()<<"\nLoad ptr :";
+            LoadPtr->dump();
+            errs()<<"\n Load insts :";
+            set<Value *> loadI = (*Qit).second;
+            for(set< Value*>::iterator LI_IT = loadI.begin(); LI_IT != loadI.end(); ++LI_IT)
+            {
+                (*LI_IT)->dump();
+            }
+
+        }
+    }
 
     for (BasicBlock::reverse_iterator Iit = ProcBlock->rbegin(), Iend = ProcBlock->rend(); Iit != Iend; ++Iit)
     {
@@ -687,6 +941,27 @@ void moduleDepGraph::LoadStoreMap(map<Value*, set< Value*> > LoadQueue,BasicBloc
                 if(checkPointer(LoadPtr,StorePtr,parentFunc))
                 {
                     GraphNode * stNode = F_Graph->StoreNodeMap[SI];
+
+                    if(code)
+                    {errs()<<"\n Store found for load : ";
+                    LoadPtr->dump();
+                    errs()<<" -------- Store inst  : ";
+                    SI->dump();
+                     errs()<<" --------Node   : ";
+                     if(stNode != NULL)
+                     { if(isa<MemNode>(stNode))
+                         {
+                             MemNode* mNode = dyn_cast<MemNode>(stNode);
+                             errs()<<" ------ Mem node label: --"<<mNode->getLabel();
+                         }
+                      //stNode->getLabel();
+                     }
+                     else
+                          errs()<<" NULL \n";
+
+                    }
+
+
                     if(stNode != NULL)
                     {
                         //Iterate through all load inst for that pointer..
@@ -696,10 +971,15 @@ void moduleDepGraph::LoadStoreMap(map<Value*, set< Value*> > LoadQueue,BasicBloc
                             GraphNode * ldNode = F_Graph->findNode(*LI_IT);
                             if(ldNode != NULL )
                             {
-                                stNode->connect(ldNode);
-                                if(code) errs()<<"\n +++++ Connecting the pointer nodes...  "<<stNode->getLabel()<<" -- "<<ldNode->getLabel()<<" for ptrs ";
-                                if(code) StorePtr->dump();
-                                if(code) LoadPtr->dump();
+                                if(isa<MemNode>(stNode))
+                                                         {
+                                                             MemNode* mNode = dyn_cast<MemNode>(stNode);
+                                //stNode->connect(ldNode);
+                                                             mNode->connect(ldNode,etData);
+                                }
+                               // if(code) errs()<<"\n +++++ Connecting the pointer nodes...  "<<stNode->getLabel()<<" -- "<<ldNode->getLabel()<<" for ptrs ";
+                                //if(code) StorePtr->dump();
+                                //if(code) LoadPtr->dump();
                             }
                         }
                     }
@@ -736,53 +1016,19 @@ set<BasicBlock*>  moduleDepGraph::Process_Block(BasicBlock* BB, Graph* F_Graph)
 
     Function * parentFunction = BB->getParent();
 
+   // if(code) errs()<<"\n Processing Block :"<<BB->getName()<<"\n";
     int counter =0;
     //Iterate over each instruction in the block and process it.
     for (BasicBlock::iterator Iit = BB->begin(), Iend = BB->end(); Iit
          != Iend; ++Iit) {
 
-
+      //  if(code) Iit->dump();
         if(isa<GetElementPtrInst>(&*Iit))
         {
-            //Check if it is the field of interest.
             GetElementPtrInst * GI = dyn_cast<GetElementPtrInst>(&*Iit);
-            Value* baseptr = GI->getOperand(0);
-            // if(code) errs()<<"\n\n   GEP";
-            if(code) baseptr->dump();
-            for(set<RelevantFields*>::iterator fieldIt = relevantFields.begin(); fieldIt != relevantFields.end(); ++fieldIt)
-            {
-
-                if((*fieldIt)->functionName==parentFunction->getName())
-                {
-                    if(baseptr->hasName())
-                        if(baseptr->getName()== (*fieldIt)->variable)
-                        {
-                            if(code) errs()<<"\nTesting for var : "<<(*fieldIt)->variable;
-
-                            int fieldIndex;
-                            for (int i = GI->getNumOperands() - 2; i > 0; i--) {
-                                Type *ty = GI->getType();
-                                //  assert(ty->isArrayTy() || ty->isStructTy());
-                                if (ty->isStructTy()) { // structure field
-
-                                    fieldIndex = cast<ConstantInt>(GI->getOperand(i + 1))->getZExtValue();
-
-                                }
-                            }
-                            //match index.
-                            if(fieldIndex == (*fieldIt)->index)
-                            {
-                                FieldVals.insert(GI);
-                                //update fields in graph.
-                                F_Graph->FieldsVal = FieldVals;
-                                if(code) errs()<<"\n\n   Found field";
-                                if(code) GI->dump();
-                            }
-                        }
-
-                }
-            }
+            CheckifRelevantField(GI,F_Graph);
         }
+
         if(isa<CallInst>(&*Iit))  //  handle the call inst.
         {
             CallInst *CI = dyn_cast<CallInst>(&*Iit);
@@ -811,6 +1057,89 @@ set<BasicBlock*>  moduleDepGraph::Process_Block(BasicBlock* BB, Graph* F_Graph)
     return affected_BB;
 }
 
+
+
+void moduleDepGraph::CheckifRelevantField(GetElementPtrInst * GI, Graph* F_Graph)
+{
+
+    //Check if it is the field of interest.
+    Function * parentFunction = GI->getParent()->getParent();
+    Value* baseptr = GI->getOperand(0);
+    Type* ty = baseptr->getType();
+
+    if(code) errs()<<"\n\n   GEP :"<<relevantFields.size();
+    if(code) GI->dump();
+    if(code) baseptr->dump();
+    if(code) ty->dump();
+
+    if(code)
+    {errs()<<"\n is pointer :"<<ty->isPointerTy()<<"\n";
+    if(ty->isPointerTy())
+    {
+        ty->getPointerElementType()->dump();
+        errs()<<"\n is structure now.. :"<<ty->getPointerElementType()->isStructTy()<<"\n";
+
+    }
+    //get what struct it points to..
+    if(Instruction *In = dyn_cast<Instruction>(baseptr))
+    {
+        int num = In->getNumOperands();
+        for(int i =0; i<num; i++)
+        {
+            Value* operand = In->getOperand(i);
+            operand->getType()->dump();
+            errs()<<"\n is struct : "<<operand->getType()->isStructTy();
+            if(operand->hasName())
+            {
+                errs()<<"\n has name:  "<<operand->getName();
+            }
+        }
+    }
+}
+
+    //check if the bae pointer is an struct type.. or pointer to struct.... else just get all operands and and check the same...
+    for(set<RelevantFields*>::iterator fieldIt = relevantFields.begin(); fieldIt != relevantFields.end(); ++fieldIt)
+    {
+        if(code) errs()<<"\n Function name read from file.. : "<<(*fieldIt)->functionName<<" parent funct name.. :"<<parentFunction->getName();
+
+        if((*fieldIt)->functionName==parentFunction->getName())
+        {
+            if(code) errs()<<"\nIn function ... looking for.... : "<<(*fieldIt)->functionName<<" "<<(*fieldIt)->variable;
+
+            if(baseptr->hasName())
+            {
+                if(code)  errs()<<"\n The base ptr.. has name...!!";
+                if(baseptr->getName()== (*fieldIt)->variable)
+                {
+                    if(code) errs()<<"\nTesting for var : "<<(*fieldIt)->variable;
+
+                    int fieldIndex;
+                    for (int i = GI->getNumOperands() - 2; i > 0; i--) {
+                        Type *ty = GI->getType();
+                        //  assert(ty->isArrayTy() || ty->isStructTy());
+                        if (ty->isStructTy()) { // structure field
+
+                            fieldIndex = cast<ConstantInt>(GI->getOperand(i + 1))->getZExtValue();
+
+                        }
+                    }
+                    //match index.
+                    if(fieldIndex == (*fieldIt)->index)
+                    {
+                        FieldVals.insert(GI);
+                        //update fields in graph.
+                        F_Graph->FieldsVal = FieldVals;
+                        if(code) errs()<<"\n\n   Found field";
+                        if(code) GI->dump();
+                    }
+                }
+            }
+            else
+                if(code)  errs()<<"\n The base ptr.. has NONAME...!!";
+
+        }
+    }
+}
 
 
 void moduleDepGraph::CollectLiveStores_Params(BasicBlock* predBlock, Instruction * Cinst,Value* pointer, Graph* F_Graph)
@@ -1673,12 +2002,13 @@ void moduleDepGraph::ReadRelevantFields(){
     std::string line;
     if(!srcFile)
     {
-        errs() << " Could not open the taint Input file \n";
+        errs() << " Could not open the Field information file..? \n";
     }
     else
     {
         while(srcFile >> line)
         {
+         //   if(code) errs() << " Reading fields--- ";
             line.erase( std::remove_if( line.begin(), line.end(), ::isspace ), line.end() );
             RelevantFields * rs = new RelevantFields();
             rs->functionName = line;
@@ -1688,6 +2018,7 @@ void moduleDepGraph::ReadRelevantFields(){
                 if(srcFile >> line)
                 { line.erase( std::remove_if( line.begin(), line.end(), ::isspace ), line.end() );
                     rs->index = std::atoi(line.c_str());
+                    rs->fieldName = line;
                     relevantFields.insert(rs);
                 }
                 // taintSources.insert(ts);

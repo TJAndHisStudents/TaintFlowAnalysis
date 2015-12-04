@@ -6,7 +6,7 @@
 #endif
 
 #define USE_ALIAS_SETS true
-#define useCallStrings true
+#define useCallStrings false
 #define SensitivityDepth  0
 
 #include "llvm/Pass.h"
@@ -73,6 +73,7 @@ class RelevantFields {
 public:
     std::string functionName;
     std::string variable;
+    std::string fieldName;
     int index;
     bool isStruct;
     RelevantFields();
@@ -156,9 +157,11 @@ public:
         void ProcessGlobals(Module& M, Graph* TopDownGraph);
 
         void LoadStoreMap(map<Value*, set< Value*> > LoadQueue,BasicBlock* TermBlock,Graph * F_Graph);
+        void BFSLoadStoreMap(map<Value*, set< Value*> > LoadQueue,Function * F, Graph * F_Graph);
 
         void ReadRelevantFields();
 
+        void CheckifRelevantField(GetElementPtrInst * GI,Graph* F_Graph);
 
 
         std::vector<instructionCallSite*> ProcessedCallsites;

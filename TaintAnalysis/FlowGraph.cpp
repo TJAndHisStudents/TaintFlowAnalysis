@@ -253,17 +253,44 @@ std::set<llvm::Value*> llvm::MemNode::getAliases() {
 
 std::string llvm::MemNode::getLabel() {
     std::ostringstream stringStream;
-    if(defLoc->hasVal)
+
+    bool labelSet = false;
+    // if(aliasSetID)
+    if(USE_ALIAS_SETS)
     {
-        //string blockName = defLoc->parentBlock->getName();
-        //string funcName = defLoc->parentFunction->getName();
-
-        // stringStream << "Memory " << aliasSetID << "_" << funcName<<"_"<<blockName << "_"<<defLoc->lineNumber;
-        stringStream << "Memory " << aliasSetID << "_" <<defLoc->IdValue;
-
+        set<Value *> aliasValSet = AS->getValueSets()[aliasSetID];
+        if(aliasValSet.size()==1)
+        {
+            Value * ptrVal = (*aliasValSet.begin());
+            if(ptrVal->hasName())
+            {
+                string valName = ptrVal->getName();
+                if(defLoc->hasVal)
+                {
+                    stringStream << valName << "_" << aliasSetID << "_" << defLoc->IdValue;
+                    labelSet = true;
+                }
+                else
+                {
+                    stringStream << valName << "_" << aliasSetID;
+                    labelSet = true;
+                }
+            }
+        }
     }
-    else
-        stringStream << "Memory " << aliasSetID;
+
+    if(!labelSet)
+        if(defLoc->hasVal)
+        {
+            //string blockName = defLoc->parentBlock->getName();
+            //string funcName = defLoc->parentFunction->getName();
+
+            // stringStream << "Memory " << aliasSetID << "_" << funcName<<"_"<<blockName << "_"<<defLoc->lineNumber;
+            stringStream << "Memory " << aliasSetID << "_" <<defLoc->IdValue;
+
+        }
+        else
+            stringStream << "Memory " << aliasSetID;
     return stringStream.str();
 }
 
@@ -496,6 +523,19 @@ void Graph::dfsVisitBack(GraphNode* u, GraphNode* u2, std::set<GraphNode*> &visi
 
 }
 
+
+void Graph::updateMemNodeLabels()
+{
+//          llvm::DenseMap<int, GraphNode*> memNodes;
+//    DenseMap<int, set<Value*> > AliasMap;
+//    for(DenseMap<int, GraphNode*>::iterator memNodeIT = memNodes.begin(); memNodeIT != memNodes.end(); ++memNodeIT)
+//    {
+//        int id = (*memNodeIT)->aliasSetID
+//        set<Value*> ALiasValSet = AliasMap[]
+//    }
+}
+
+
 //Print the graph (.dot format) in the stderr stream.
 void Graph::toDot(std::string s) {
 
@@ -508,7 +548,7 @@ void Graph::toDot(std::string s, const std::string fileName) {
     std::string ErrorInfo;
     sys::fs::OpenFlags Flags;
 
-
+    this->updateMemNodeLabels();
     raw_fd_ostream File(fileName.c_str(), ErrorInfo,sys::fs::F_None);
 
     if (!ErrorInfo.empty()) {
@@ -821,7 +861,7 @@ GraphNode* Graph::addParamNode(Value *v, Function * func)
             //StoreNodeMap[SI] = memNew;
             //functionParamMap
             //funcParMapLocal
-
+            memNodes[memNew->getAliasSetId()] = memNew;
             Var->connect(memNew);
             Var = memNew;
             //nodes.insert(memNew);
@@ -904,6 +944,7 @@ GraphNode* Graph::addInst(Value *v, int Instcounter, Function * func) {
                                     StoreNodeMap[SI] = memNew;
                                     // Var->connect(memNew);
                                     Var = memNew;
+                                    memNodes[memNew->getAliasSetId()] = memNew;
                                     nodes.insert(memNew);
                                 }
                             }
@@ -931,6 +972,7 @@ GraphNode* Graph::addInst(Value *v, int Instcounter, Function * func) {
                             StoreNodeMap[SI] = memNew;
                             Var->connect(memNew);
                             Var = memNew;
+                            memNodes[memNew->getAliasSetId()] = memNew;
                             nodes.insert(memNew);
 
                         }
@@ -1078,7 +1120,8 @@ GraphNode* Graph::addInst(Value *v, int Instcounter, Function * func) {
                             StoreNodeMap[param] = memNew;
                             Operand->connect(memNew);
                             Operand = memNew;
-
+                            nodes.insert(memNew);
+                            memNodes[memNew->getAliasSetId()] = memNew;
 
 
                             set<MemoryOperation*> memOps = LiveMap[param];
@@ -1299,10 +1342,10 @@ bool Graph::isValidInst(Value *v) {
     if ((!includeAllInstsInDepGraph) && isa<Instruction> (v)) {
         //List of instructions that we don't want in the graph
         switch (cast<Instruction>(v)->getOpcode()) {
-        case Instruction::Br:
-            //  case Instruction::Switch:
-            //  case Instruction::Ret:
-            // case Instruction::Call:
+            case Instruction::Br:
+              case Instruction::Switch:
+              case Instruction::Ret:
+             case Instruction::Call:
             return true;
 
         }
