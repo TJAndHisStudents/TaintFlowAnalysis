@@ -1,0 +1,5 @@
+sub_11F48 v3 password
+sub_11F48 v2 policy
+sub_11F48 v5 username
+sub_11F48 v7 encryptedPassword
+global optarg cmdArgs

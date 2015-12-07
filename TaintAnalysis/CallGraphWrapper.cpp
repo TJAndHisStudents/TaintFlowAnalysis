@@ -159,17 +159,17 @@ bool CallGraphWrapper::runOnModule(Module &M) {
 
     DEBUG(errs()<<"Address Taken Functions: "<< addressTaken.size());
 
-  /*
-   * Print Address Taken..uncomment to see results.
-   *
-   *    for(std::set<Function*>::iterator FI = addressTaken.begin();FI!=addressTaken.end();++FI)
+
+   // Print Address Taken..uncomment to see results.
+
+       for(std::set<Function*>::iterator FI = addressTaken.begin();FI!=addressTaken.end();++FI)
     {
         errs()<<"\nAddress Taken For: "<<(*FI)->getName();
         errs()<<" Type:  ";
         (*FI)->getType()->dump();
        // Function * f;
 
-    } */
+    }
 
 
     //Consider the root node as external node if you dont find the main functions to start with.

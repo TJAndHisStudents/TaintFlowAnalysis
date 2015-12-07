@@ -1,0 +1,2 @@
+intersect password policyfile
+intersect config response_a1

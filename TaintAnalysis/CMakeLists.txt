@@ -5,14 +5,13 @@ add_llvm_loadable_module(TaintFlow
     BuildGraph.cpp
     ControlDependenceGraph.cpp
     FlowGraph.cpp
-    FPAnalysis.cpp
     fpt.cpp
-    hookPlacement.cpp
     InputDep.cpp
     InputValues.cpp
     PADriver.cpp
     PointerAnalysis.cpp
-    ProcessControlDep.cpp
+#    ProcessControlDep.cpp
+    hookPlacement.cpp
     TaintFlow.cpp
     CallGraphWrapper.cpp
   )
