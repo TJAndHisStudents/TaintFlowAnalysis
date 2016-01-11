@@ -24,7 +24,11 @@ The taint sources i.e. the user input, network and adversary input are identifie
 
 Running the tool
 ---------
-Inputs required: To run the tool the following inputs need to be prepared: 1. C-like decompiled code from hex. 2. Manually update the c-like code to make it compilable in clang after running it through the provided scripts. 3. Generate the bitcode file from the de-compiled code.
+Inputs required: To run the tool the following inputs need to be prepared: 
+1. C-like decompiled code from hex. 
+2. Manually update the c-like code to make it compilable in clang after running it through the provided scripts. 
+3. Generate the bitcode file from the de-compiled code.
+
 The tool operates on this llvm IR format. The supplementary inputs required for running a test are:
 1.	source_sink.txt : This file contains the source and sink functions between which the flow needs to be analyzed. This file should be placed where the opt executable is located. 
 2.	taintSource : This file specifies the taint sources in the format: <function varname label> and can be specified to the tool with option –taintSource=<file>. The standard input functions (scanf,read etc) are considered along with the specified ones. 
