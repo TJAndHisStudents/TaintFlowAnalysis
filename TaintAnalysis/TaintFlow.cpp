@@ -27,6 +27,41 @@ TaintFlow::TaintFlow() :
 
 }
 
+set<Value*> TaintFlow::getTaintedVals(std::set<GraphNode*> tainted)
+{
+    set<Value*> taintedVals;
+
+    for(set<GraphNode*>::iterator taintNode = tainted.begin();taintNode != tainted.end();++taintNode)
+    {
+        if(isa<MemNode>(*taintNode))
+        {
+            MemNode * memNew = dyn_cast<MemNode>(*taintNode);
+            Value * val = memNew->defLocation.second;
+            std::set<Value*> aliases = memNew->getAliases();
+
+            if(val)
+            {
+                taintedVals.insert(val);
+            }
+            for(set<Value*>::iterator alVal = aliases.begin(); alVal != aliases.end();++alVal)
+            {
+                taintedVals.insert(*alVal);
+            }
+        }
+        if(isa<VarNode>(*taintNode))
+        {
+            VarNode * varNew = dyn_cast<VarNode>(*taintNode);
+            Value * val = varNew->getValue(); //->defLocation.second;
+            if(val)
+            {
+                taintedVals.insert(val);
+            }
+        }
+    }
+
+    return taintedVals;
+}
+
 bool TaintFlow::runOnModule(Module &M) {
 
     //Get the timing information for the analysis..done using -time-passes
@@ -47,8 +82,8 @@ bool TaintFlow::runOnModule(Module &M) {
         mediatorFunctions = IV.getMediators();
         queryinputs = IV.getQueryVals();
         // targetVal = IV.getTargetValue();
-        //  PostDominatorTree &pdt = getAnalysis<PostDominatorTree>();
-        //   DominatorTree &DT = getAnalysis<DominatorTree>();
+      //  PostDominatorTree &pdt = getAnalysis<PostDominatorTree>();
+     //   DominatorTree &DT = getAnalysis<DominatorTree>();
     }
 
     blockAssign &bssa = getAnalysis<blockAssign> ();
@@ -118,15 +153,15 @@ bool TaintFlow::runOnModule(Module &M) {
 
         std::set<GraphNode *>::iterator G;
         std::set<GraphNode *>::iterator endG;
-        //        for (G = tainted.begin(), endG = tainted.end(); G != endG; ++G)
-        //        {
-        //            //  errs()<<" The tainted graph node : "<<(*G)->getName()<<"\n";
-        //        }
+//        for (G = tainted.begin(), endG = tainted.end(); G != endG; ++G)
+//        {
+//            //  errs()<<" The tainted graph node : "<<(*G)->getName()<<"\n";
+//        }
 
         // errs()<<" \n \n";
 
-
-
+	ofstream write_ops_fd;
+	write_ops_fd.open("tainted-write-ops.out");
         //DEBUG( // If debug mode is enabled, add metadata to easily identify tainted values in the llvm IR
         for (Module::iterator F = M.begin(), endF = M.end(); F != endF; ++F) {
             for (Function::iterator BB = F->begin(), endBB = F->end(); BB != endBB; ++BB) {
@@ -141,45 +176,56 @@ bool TaintFlow::runOnModule(Module &M) {
                             //  BI->dump();
                             branches++;
                         }
-                        if(CallInst *CI = dyn_cast<CallInst>(I))
-                        {
 
-                            Function* func = CI->getCalledFunction();
-                            if(func && !func->isDeclaration())
-                            {
+
 
 
                                 for(set<string>::iterator med = mediatorFunctions.begin(); med != mediatorFunctions.end();med++)
                                 {
                                     string medfunc = (*med);
-                                    string funcName = func->getName();
+                                    string funcName =  F->getName(); //func->getName();
 
                                     if(strcmp(medfunc.c_str(),funcName.c_str())==0)
                                     {
-                                        errs()<<"\n+++++++++++ Med func  : function name :  "<<funcName;
-                                        appendVal = appendVal+"_Med";
+                                        if(CallInst *CI = dyn_cast<CallInst>(I))
+                                        {
+                                            //CI->g
+
+                                            Function* func = CI->getCalledFunction();
+                                            if(func)
+                                            {
+                                                StringRef calledFunc = func->getName();
+                                                if(calledFunc.equals("strcmp"))
+                                                {
+                                                    errs()<<"\n\n Found strcmp in function "<<funcName;
+                                                    appendVal = appendVal+"_Med";
+                                                }
+                                            }
+
+
+                                            }
+                                       // errs()<<"\n+++++++++++ Med func  : function name :  "<<funcName;
+
                                     }
                                 }
-                            }
 
-                        }
 
                         //check if any operand is global string..
                         if(writeStrings)
                         {
-                            for (unsigned int i = 0; i < cast<User> (I)->getNumOperands(); i++)
-                            {
-                                Value *v1 = cast<User> (I)->getOperand(i);
-                                if(isa<GlobalVariable> (v1))
-                                {
-                                    if(isa<Constant> (v1))
-                                    {
-                                        //string sName = v1->getName()
-                                        v1->print(FileS);
-                                        (FileS) << "\n";
-                                    }
-                                }
-                            }
+                             for (unsigned int i = 0; i < cast<User> (I)->getNumOperands(); i++)
+                             {
+                                 Value *v1 = cast<User> (I)->getOperand(i);
+                                 if(isa<GlobalVariable> (v1))
+                                 {
+                                     if(isa<Constant> (v1))
+                                     {
+                                         //string sName = v1->getName()
+                                          v1->print(FileS);
+                                         (FileS) << "\n";
+                                     }
+                                 }
+                             }
                         }
 
                         LLVMContext& C = I->getContext();
@@ -195,6 +241,20 @@ bool TaintFlow::runOnModule(Module &M) {
 
                         //std::string taintVal = std::strcat("tainted",numstr);
                         I->setMetadata(taintVal, N);
+
+
+
+			// Check if it is a write operation. If it is, record the function name and the instruction.
+			if (StoreInst *si = dyn_cast<StoreInst>(I))
+			{
+				const std::string funcString = F->getName();
+				write_ops_fd << funcString;
+				write_ops_fd << " : ";
+				write_ops_fd << si;
+				write_ops_fd << "\n";
+				
+			}
+
                     }
 
 
@@ -283,8 +343,19 @@ void TaintFlow::HandleQueries(Module& M)
         std::set<GraphNode*> taintedB;
         std::set<GraphNode*> intersectGraph;
 
+        std::set<Value*> taintedA_val;
+        std::set<Value*> taintedB_val;
+        std::set<Value*> intersectGraph_val;
+
+
         for(set<string>::iterator label = labels.begin();label != labels.end();++label)
             errs()<<" - "<<*label;
+
+        errs()<<"\n Val size:"<<vals.size();
+        for(set<Value*>::iterator val = vals.begin();val != vals.end();++val)
+        {
+            (*val)->dump();
+        }
         errs()<<"\n*******************************************************\n ";
 
         constCheck = (*qit)->constcheck;
@@ -292,116 +363,83 @@ void TaintFlow::HandleQueries(Module& M)
         {
             for(set<Value*>::iterator val = vals.begin();val != vals.end();++val)
             {
+                //              errs()<<"\n In cons check :";
                 taintedA = taintGraphMap[*val];
             }
-            intersectGraph = taintedA;
+            //  if(taintedA!=NULL)
+            //            intersectGraph = taintedA;
+            intersectGraph.insert(taintedA.begin(),taintedA.end());
+            intersectGraph_val = getTaintedVals(intersectGraph);
         }
         else
         {
 
-            for(set<Value*>::iterator val = vals.begin();val != vals.end();++val)
-            {
-                taintedA = taintGraphMap[*val];
-                ++val;
-                if(val!=vals.end())
-                    taintedB = taintGraphMap[*val];
-            }
             if(strcmp(operation.c_str(),"intersect")==0)
             {
-                //  intersectGraph = getIntersect(taintedA,taintedB);
-
-                for(set<GraphNode*>::iterator gnode = taintedA.begin();gnode != taintedA.end();++gnode)
+                intersectGraph.clear();
+                intersectGraph_val.clear();
+                for(set<Value*>::iterator val = vals.begin();val != vals.end();++val)
                 {
-                    if(taintedB.count(*gnode) > 0)
+                    bool round2 = false;
+                    if(val==vals.begin())
                     {
-                        GraphNode* interNode = (*gnode)->clone();
-                        intersectGraph.insert(interNode);
+
+                        taintedA = taintGraphMap[*val];
+                        taintedA_val = getTaintedVals(taintedA);
+                        ++val;
+                        if(val!=vals.end())
+                        {
+                            taintedB = taintGraphMap[*val];
+                            taintedB_val = getTaintedVals(taintedB);
+                        }
+
+                    }
+                    else
+                    {
+                        taintedA_val.clear();
+                        taintedA_val.insert(intersectGraph_val.begin(),intersectGraph_val.end());
+                        intersectGraph_val.clear();
+                        taintedB = taintGraphMap[*val];
+                        taintedB_val = getTaintedVals(taintedB);
                     }
 
-                }
-            }
-        }
-
-
-
-
-
-        int branches =0;
-        errs()<<"\n Intersect graph size :"<<intersectGraph.size();
-        //print intersect graph nodes:
-
-        //     PrintTainted(intersectGraph);
-
-        //        for(set<GraphNode*>::iterator gnode = intersectGraph.begin();gnode != intersectGraph.end();++gnode)
-        //        {
-        //            errs()<<"\n Node: "<<(*gnode)->getLabel();
-        //        }
-
-        //Print appropriate vals....:
-        for (Module::iterator F = M.begin(), endF = M.end(); F != endF; ++F) {
-            string funcName = F->getName();
-            //  errs()<<"\nTaints in function: "<<funcName;
-            for (Function::iterator BB = F->begin(), endBB = F->end(); BB != endBB; ++BB) {
-                string bbName ="noName";
-                if(BB->hasName())
-                {
-                    bbName = BB->getName();
-                }
-                //  errs()<<" - block: "<<bbName;
-                NumberofBlocks++;
-                for (BasicBlock::iterator I = BB->begin(), endI = BB->end(); I
-                     != endI; ++I) {
-                    GraphNode* g = depGraph->findNode(I);
-                    if (intersectGraph.count(g)) {
-                        errs()<<"\n Node found..:";
-                        I->dump();
-                        if(printall)
+                    if(taintedA_val.empty() || taintedB_val.empty())
+                        errs()<<"\n Val graphs null..";
+                    else
+                    {
+                        for(set<Value*>::iterator gnode = taintedB_val.begin();gnode != taintedB_val.end();++gnode)
                         {
-                            errs()<<"Taint in function : "<<funcName<<"  :";
-                            I->dump();
-                        }
-                        else if(printcond)
-                        {
-                            if (BranchInst *BI = dyn_cast<BranchInst>(I))
+                            if(taintedA_val.count(*gnode) > 0)
                             {
-                                if(constCheck)
-                                {
-                                    Value* conditional = BI->getCondition();
-
-                                    for (unsigned int i = 0; i < cast<User> (conditional)->getNumOperands(); i++)
-                                    {
-                                        Value *v1 = cast<User> (conditional)->getOperand(i);
-                                        if(isa<ConstantInt>(v1))
-                                        {
-                                            errs()<<"Branch Inst tainted in func : "<<funcName<<"  :";
-                                            BI->dump();
-                                            branches++;
-                                        }
-
-                                    }
-
-                                }
-                                else
-                                {
-                                    //    BI->getCondition()->dump();
-                                    errs()<<"Branch Inst tainted : ";
-                                    BI->dump();
-                                    branches++;
-                                }
+                                intersectGraph_val.insert((*gnode));
                             }
+
                         }
                     }
                 }
             }
         }
 
+ //       int branches =0;
+        errs()<<"\n Intersect graph size :"<<intersectGraph_val.size();
+        errs()<<"\n--------------------------";
 
-        errs()<<"\n Number of conditionals tainted : " <<branches;
+        for(set<Value*>::iterator gnode = intersectGraph_val.begin();gnode != intersectGraph_val.end();++gnode)
+        {
+            errs()<<"\n Intersected tainted ";
+            Value * val = (*gnode);
+            if(isa<Instruction>(val))
+            {
+                Instruction * inst = dyn_cast<Instruction>(val);
+                string funcName = inst->getParent()->getParent()->getName();
+                errs()<<"\n Function: "<<funcName;
+            }
+            val->dump();
+        }
     }
 
     errs()<<"\n*******************************************************\n ";
 }
-
 
 ///Function:
 // This function will get the sink values from the input file,
@@ -516,7 +554,6 @@ void testProcessing(){
 }
 
 
-
 void TaintFlow::PrintTainted(std::set<GraphNode*> tainted)
 {
     //  errs()<<"\n\n Tainted Nodes: "<<tainted.size();
@@ -541,7 +578,7 @@ void TaintFlow::PrintTainted(std::set<GraphNode*> tainted)
 
                 if(val)
                 {
-                    errs()<<"\n Sink Node Tainted : "<<(*taintNode)->getLabel();
+                     errs()<<"\n Sink Node Tainted : "<<(*taintNode)->getLabel();
                     if(isa<Instruction>(val))
                     {
                         Instruction * inst = dyn_cast<Instruction>(val);
@@ -551,7 +588,7 @@ void TaintFlow::PrintTainted(std::set<GraphNode*> tainted)
                     val->dump();
                 }
                 if(aliases.size()>0)
-                    errs()<<"\n Sink Node Tainted : "<<(*taintNode)->getLabel();
+                     errs()<<"\n Sink Node Tainted : "<<(*taintNode)->getLabel();
                 for(set<Value*>::iterator alVal = aliases.begin(); alVal != aliases.end();++alVal)
                 {
                     if(isa<Instruction>(*alVal))
@@ -571,7 +608,7 @@ void TaintFlow::PrintTainted(std::set<GraphNode*> tainted)
             Value * val = varNew->getValue(); //->defLocation.second;
             if(val)
             {
-                errs()<<"\n Sink Node Tainted : "<<(*taintNode)->getLabel();
+                 errs()<<"\n Sink Node Tainted : "<<(*taintNode)->getLabel();
                 if(isa<Instruction>(val))
                 {
                     Instruction * inst = dyn_cast<Instruction>(val);
@@ -602,9 +639,6 @@ void TaintFlow::getAnalysisUsage(AnalysisUsage &AU) const {
     AU.addRequired<blockAssign> ();
     AU.addRequired<InputValues> ();
     AU.addRequired<InputDep> ();
-    //  AU.addRequired<DominatorTree> ();
-    // AU.addRequired<AndersAA> ();
-    //AU.addRequired<hookPlacement> ();
 }
 
 char TaintFlow::ID = 0;

@@ -1,0 +1,30 @@
+
+
+
+8168_taint_source:sub_11F48 v3 password
+8168_taint_source:sub_11F48 v6 shadowPolicy
+8168_taint_source:sub_11F48 v5 username
+8168_source_sink:test sub_11F48 sub_51D10
+8168_mediator:test mediator
+8168_fields:test field
+8168_sinks:test sink
+8168_query:test query
+
+
+
+
+
+
+1241_source_sink:test main sub_15E34
+1241_taint_source:test taint source
+1241_mediator:test mediator
+1241_fields:test fields
+1241_sinks:test sinks
+1241_query:test query
+
+1314_source_sink:test something something
+1314_taint_source:test taint source
+1314_query:intersect label1 label2
+1314_fields:test fields
+1314_sinks:test sink
+1314_mediator:test mediator
