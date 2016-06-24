@@ -945,7 +945,9 @@ GraphNode* Graph::addInst(Value *v, int Instcounter, Function * func) {
                                     // Var->connect(memNew);
                                     Var = memNew;
                                     memNodes[memNew->getAliasSetId()] = memNew;
+                                    if(debug) errs()<<"\n ~~~~~~~~~~~~  Node size before inert...: "<<nodes.size()<<"  name: "<<memNew->getLabel();;
                                     nodes.insert(memNew);
+                                      if(debug) errs()<<"\n ~~~~~~~~~~~~  Node size after inert...: "<<nodes.size();
                                 }
                             }
                         }
@@ -973,7 +975,9 @@ GraphNode* Graph::addInst(Value *v, int Instcounter, Function * func) {
                             Var->connect(memNew);
                             Var = memNew;
                             memNodes[memNew->getAliasSetId()] = memNew;
+                             if(debug) errs()<<"\n ~~~~~~~~~~~~  Node size before inert...: "<<nodes.size()<<"  name: "<<memNew->getLabel();;
                             nodes.insert(memNew);
+                             if(debug) errs()<<"\n ~~~~~~~~~~~~  Node size after inert...: "<<nodes.size();
 
                         }
                         //  SI->dump();
@@ -1120,7 +1124,9 @@ GraphNode* Graph::addInst(Value *v, int Instcounter, Function * func) {
                             StoreNodeMap[param] = memNew;
                             Operand->connect(memNew);
                             Operand = memNew;
+                            if(debug) errs()<<"\n ~~~~~~~~~~~~  Node size before inert...: "<<nodes.size()<<"  name: "<<memNew->getLabel();
                             nodes.insert(memNew);
+                            if(debug) errs()<<"\n ~~~~~~~~~~~~  Node size after inert...: "<<nodes.size();
                             memNodes[memNew->getAliasSetId()] = memNew;
 
 

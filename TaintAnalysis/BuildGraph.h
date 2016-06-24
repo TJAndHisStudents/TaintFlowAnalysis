@@ -6,7 +6,7 @@
 #endif
 
 #define USE_ALIAS_SETS true
-#define useCallStrings false
+#define useCallStrings true
 #define SensitivityDepth  0
 
 #include "llvm/Pass.h"
@@ -114,6 +114,7 @@ public:
         map<CallSite*,map<Value*,set<MemoryOperation*> > >  callSiteLiveParams;
         //map to store the points to graph for each function.
         map<Function*,DSGraph*> funcPointsToMap;
+        DSGraph* globalPointsToGraph;
         vector<Function*> callStringFunctions;
         map<Function*, set< vector<Function*> > > ProcessedCallStringFunctions;
         string currentCallString;
@@ -124,6 +125,8 @@ public:
 
         PathSet callPaths;
 
+        ConfigInfo configData;
+
 
         vector<string> callPathFunctions;
 
@@ -133,10 +136,10 @@ public:
         set<BasicBlock*>  Process_Block(BasicBlock* BB, Graph* F_Graph);
         void CollectLiveStores(BasicBlock* parentBlock, Instruction * Linst,Graph* F_Graph);
         void CollectLiveStores_Params(BasicBlock* predBlock, Instruction * Cinst,Value* pointer, Graph* F_Graph);
-        void matchParametersAndReturnValues(Function &F);
+        void matchParametersAndReturnValues(Function &F,Graph * Full_Graph);
         void matchParametersAndReturnValues_new(Function &F);
         bool checkPointer(Value * Ptr, Value* targetPtr, Function * parentFunc);
-        void deleteCallNodes(Function* F);
+       // void deleteCallNodes(Function* F);
         void AddUniqueQueueItem(set<BasicBlock*> &setBlock, queue<BasicBlock*> &queueBlock, BasicBlock * bb);
 
         void TopDownProcessing(Function * F,AliasSets * AS);

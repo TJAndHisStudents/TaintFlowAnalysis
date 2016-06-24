@@ -57,6 +57,7 @@ typedef enum {
         etData = 0, etControl = 1
 } edgeType;
 
+
 /*
  * Class GraphNode
  *
@@ -109,6 +110,9 @@ protected:
 public:
         bool tainted;
       //  std::string Name;
+        std::set<std::string> taintSet;
+        string baseTaint;
+
         MemoryOperation* defLoc = new MemoryOperation();
 
         GraphNode();
@@ -335,6 +339,7 @@ private:
 
         llvm::DenseMap<Value*, GraphNode*> varNodes;
         llvm::DenseMap<int, GraphNode*> memNodes;
+        llvm::DenseMap<Value*, GraphNode*> memValNodes;
 
         std::set<GraphNode*> nodes;
 

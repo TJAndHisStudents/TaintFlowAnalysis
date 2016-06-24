@@ -27,6 +27,8 @@ using namespace llvm;
 class TaintSource {
 public:
     std::string functionName;
+    std::string fieldName;
+    int fieldIndex;
     std::string variable;
     std::string label;
     TaintSource();
@@ -63,6 +65,18 @@ class SourceType {
 		void Print();
 };
 
+
+//Class to store config file.
+class ConfigInfo {
+public:
+    bool Source;
+    bool full;
+    bool ContextSensitive;
+    bool useCallString;
+    ConfigInfo();
+};
+
+
 class InputDep : public ModulePass {
 	private:
         std::set<Value*> inputDepValues;
@@ -81,6 +95,8 @@ class InputDep : public ModulePass {
         std::set<std::string> mediatorFunctions;
         std::set<std::string> sinkFunctions;
 
+        ConfigInfo config;
+
 //        std::set<RelevantFields*> relevantFields;
         std::set<Value*> inputUses;
 		bool runOnModule(Module &M);
@@ -98,6 +114,7 @@ class InputDep : public ModulePass {
         std::set<std::string> getMediators();
         std::set<std::string> getSinks();
         std::set<QueryInput*> getQueryVals();
+        ConfigInfo getConfigInfo();
 //        std::set<RelevantFields*>  getFields();
         void ListAllUses(Value* Input, Function *F);
 		int getLineNo(Value*);
@@ -108,7 +125,8 @@ class InputDep : public ModulePass {
         void ReadTaintInput();
         void ReadMediatorInput();
         void ReadSinkInput();
-         void ReadQueryInput();
+        void ReadQueryInput();
+        void ReadConfigFile();
 //        void ReadRelevantFields();
 };
 

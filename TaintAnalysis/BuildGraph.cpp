@@ -70,13 +70,12 @@ void moduleDepGraph::getAnalysisUsage(AnalysisUsage &AU) const {
 
     AU.addRequired<CallGraphWrapperPass> ();
     AU.addRequired<CallGraphWrapper> ();
-    AU.addRequiredTransitive<AliasAnalysis>();
+  //  AU.addRequiredTransitive<AliasAnalysis>();
     AU.addRequired<MemoryDependenceAnalysis>();
+ //   AU.addRequired<MemDepPrinter>();
     AU.addRequired<InputDep> ();
     // if(USE_DSA1)
     AU.addRequired<BUDataStructures> ();
-    // AU.addRequired<CallGraphWrapper>();
-    //    AU.addRequiredTransitive<CallGraphWrapperPass> ();
     AU.setPreservesAll();
 }
 
@@ -89,6 +88,11 @@ bool moduleDepGraph::runOnModule(Module &M) {
     CallGraphWrapper &cgWrapper = getAnalysis<CallGraphWrapper> ();
 
     callPaths = cgWrapper.getCallPaths();
+
+
+    //Initalize all the config params.
+    configData = IV.getConfigInfo();
+  //  useCallStrings = configData.useCallString;
 
     //Read the relevant tainted fields supplied to the code to make it field sensitive.
     ReadRelevantFields();
@@ -105,20 +109,20 @@ bool moduleDepGraph::runOnModule(Module &M) {
     FullGraph = new Graph(AS);
 
     //depGraph->toDot("base","../../AliasSetGraph.dot");
+
     //Get the relevant functions on the call path.. approach before the call strings approach.
     //Check if the option provided..
-    getcallPathFunctions();
+    //getcallPathFunctions();
 
     //Initialize DSA pointsto graph for each function.
     InitializePointtoGraphs(M, BU_ds);
 
-    //Process Global variables... :
-    ProcessGlobals(M,TopDownGraph);
+    //Process Global variables... it handles the globals when they are used, no need to add seperately unless source.
+   // ProcessGlobals(M,TopDownGraph);
 
     //Use the call strings generated for the provided source and sink functions if it generates paths
-    if(useCallStrings && !(callPaths.size()==0))
+    if(configData.useCallString && !(callPaths.size()==0))
     {
-
         //Compute the taint summary graphs for the functions in the callpath, and preempt the the rest.
         //Bottom up pass for building the data dep graph for individual functions..
         for (scc_iterator<CallGraph*> I = scc_begin(&CG); !I.isAtEnd(); ++I) {
@@ -148,35 +152,11 @@ bool moduleDepGraph::runOnModule(Module &M) {
 
             }
         }  //end of bottom up phase.
-
-        int path_count = 0;
-        for (std::vector<Path>::iterator I = callPaths.begin(); I != callPaths.end(); I++)
-        {
-            errs()<<"\n Proessing Path.... : "<<path_count++;
-            Path currPath = (*I);
-            //std::reverse(currPath.begin(), currPath.end());
-            callStringFunctions.clear();
-            // currentCallString = "";
-            currentCallString.clear();
-            for(std::vector<instructionCallSite>::const_iterator instCallSite = currPath.begin(); instCallSite != currPath.end(); instCallSite++)
-            {
-
-                instructionCallSite callSiteInfo = (*instCallSite);
-                Function * F = callSiteInfo.function;
-
-                if(F != NULL && !F->isDeclaration())
-                {
-                    Graph *F_Graph = FuncDepGraphs[F];
-                    ForwardProcess(F,F_Graph);
-                    ProcessedCallsites.push_back(&callSiteInfo);
-
-                }
-            }
-        }
     }
     else  //Process the whole graph..
     {
 
+            errs()<<"\n No call path found... going for topdown";
             Function* main = M.getFunction("main");
             if (main) {
                //  Process_Functions(main,TopDownGraph);
@@ -188,18 +168,21 @@ bool moduleDepGraph::runOnModule(Module &M) {
     }
 
 
-    //Assiging to depgraph for taint --- temporarily
-    depGraph = TopDownGraph;
-
+   // errs()<<"\n..... before calling match params..!!!";
     for (Module::iterator Fit = M.begin(), Fend = M.end(); Fit != Fend; ++Fit) {
 
         // If the function is empty, do not do anything
         // Empty functions include externally linked ones (i.e. abort, printf, scanf, ...)
         if (Fit->begin() == Fit->end())
             continue;
-        matchParametersAndReturnValues(*Fit);
+        errs()<<"\n..... calling match params..!!!";
+        matchParametersAndReturnValues(*Fit,TopDownGraph);
 
     }
+
+    //Assiging to depgraph for taint --- temporarily
+    depGraph = TopDownGraph;
+
 
     std::string Filename = "../../noConstTopDownGraph.dot";
     errs()<<"\n Writing dot for **************** ..TopDownGraph";
@@ -231,7 +214,7 @@ void moduleDepGraph::Process_CallSite(Instruction* inst, Function *F)
 
 }
 
-
+//Add the global values that are defined in the graph if the uses if not empty
 void moduleDepGraph::ProcessGlobals(Module& M, Graph* TopDownGraph)
 {
     for (Module::global_iterator GVI = M.global_begin(), E = M.global_end();
@@ -245,7 +228,12 @@ void moduleDepGraph::ProcessGlobals(Module& M, Graph* TopDownGraph)
         //GV->dump();
         //get val make node.. what all nodes to make and what all to eliminate.. nodes with no use delete..
         // can run globalopt before...
-        TopDownGraph->addGlobalVal(GV);
+        if(!GV->use_empty())
+        {
+         //   errs()<<"\n Adding global value: ";
+          //  GV->dump();
+            TopDownGraph->addGlobalVal(GV);
+        }
 
     }
 }
@@ -254,7 +242,7 @@ void moduleDepGraph::ProcessGlobals(Module& M, Graph* TopDownGraph)
 void moduleDepGraph::TopDownProcessing(Function * F, AliasSets * AS)
 {
     //Processing the Function, generate the data flow graph.
-    Process_Functions(F,FullGraph,SensitivityDepth);
+    Process_Functions(F,TopDownGraph,SensitivityDepth);
 
     //Iterating over the function blocks to look for next call sites and process the targets.
     for (Function::iterator BBit = F->begin(), BBend = F->end(); BBit
@@ -470,34 +458,30 @@ void moduleDepGraph::AddUniqueQueueItem(set<BasicBlock*> &setBlock, queue<BasicB
 
 ///Function to initialize the points to graph for each function from the the DSA points to analysis.
 ///Stores the result in funcPointsToMap[F]
+/// Also initialize global points to graph.
 void moduleDepGraph::InitializePointtoGraphs(Module &M,BUDataStructures &BU_ds)
 {
-    for (Module::iterator F = M.begin(), endF = M.end(); F != endF; ++F) {
+    //initlialize global points to graph.
+    globalPointsToGraph = BU_ds.getGlobalsGraph();
 
-        //  errs()<<"\n initialize points to for :"<<F->getName();
-        //Initiate the points to grapg for the child.
+    //initialize functions points to graphs.
+    for (Module::iterator F = M.begin(), endF = M.end(); F != endF; ++F) {
         if (F && !F->isDeclaration())
         {
             DSGraph *PointstoGraph  = BU_ds.getDSGraph(*F);
             funcPointsToMap[F] = PointstoGraph;
 
-
             //Writes the Points to graph in dot files..
 
 //            std::string ErrorInfo;
-//            // sys::fs::OpenFlags Flags;
 //            std::string fileName = "DSGraphInfo.txt";
-//            // nodeCount =0;
 //            raw_fd_ostream File(fileName.c_str(), ErrorInfo,sys::fs::F_None);
-
 //            if (!ErrorInfo.empty()) {
 //                errs() << "Error opening file " << fileName
 //                       << " for writing! Error Info: " << ErrorInfo << " \n";
 //                return;
 //            }
-
 //            std::string funcNames = PointstoGraph->getFunctionNames();
-
 //            PointstoGraph->writeGraphToFile(File,"../../TestFiles/"+funcNames);
         }
 
@@ -907,6 +891,8 @@ void moduleDepGraph::LoadStoreMap(map<Value*, set< Value*> > LoadQueue,BasicBloc
 
         }
 
+
+
         //check if store and maps to any load...
         if(isa<StoreInst>(&*Iit))
         {
@@ -1026,7 +1012,7 @@ set<BasicBlock*>  moduleDepGraph::Process_Block(BasicBlock* BB, Graph* F_Graph)
         if(isa<GetElementPtrInst>(&*Iit))
         {
             GetElementPtrInst * GI = dyn_cast<GetElementPtrInst>(&*Iit);
-            CheckifRelevantField(GI,F_Graph);
+         //   CheckifRelevantField(GI,F_Graph);
         }
 
         if(isa<CallInst>(&*Iit))  //  handle the call inst.
@@ -1059,6 +1045,26 @@ set<BasicBlock*>  moduleDepGraph::Process_Block(BasicBlock* BB, Graph* F_Graph)
 
 
 
+// get type after n'th index in getelementptr
+ static Type * typeOfGetElementPtr(GetElementPtrInst *e, unsigned n) {
+   assert(n < e->getNumOperands() && "over the last index in getelementptr?");
+   Value *val = e->getOperand(0);
+   Type *ty = val->getType();
+   for (unsigned i = 1; i <= n; i++) {
+     if (ty->isPointerTy())
+       ty = ty->getPointerElementType();
+     else if (ty->isArrayTy())
+       ty = ty->getArrayElementType();
+     else if (ty->isStructTy())
+       ty = ty->getStructElementType(
+           cast<ConstantInt>(e->getOperand(i))->getZExtValue());
+     else
+       assert(false && "unknown type in GEP?");
+   }
+   return ty;
+ }
+
+
 void moduleDepGraph::CheckifRelevantField(GetElementPtrInst * GI, Graph* F_Graph)
 {
 
@@ -1067,78 +1073,126 @@ void moduleDepGraph::CheckifRelevantField(GetElementPtrInst * GI, Graph* F_Graph
     Value* baseptr = GI->getOperand(0);
     Type* ty = baseptr->getType();
 
-    if(code) errs()<<"\n\n   GEP :"<<relevantFields.size();
+    if(code) errs()<<"\n\n   GEP :\n"; //<<relevantFields.size();
     if(code) GI->dump();
-    if(code) baseptr->dump();
-    if(code) ty->dump();
+   // if(code) baseptr->dump();
+    //if(code) ty->dump();
 
-    if(code)
-    {errs()<<"\n is pointer :"<<ty->isPointerTy()<<"\n";
+   // if(code)
+   // {errs()<<"\n is pointer :"<<ty->isPointerTy()<<"\n";
     if(ty->isPointerTy())
     {
+        errs()<<"\n";
+        ty->dump();
+        errs()<<" ..elem ty-> ";
+        Type* structty = ty->getPointerElementType(); //->dump();
         ty->getPointerElementType()->dump();
-        errs()<<"\n is structure now.. :"<<ty->getPointerElementType()->isStructTy()<<"\n";
-
-    }
-    //get what struct it points to..
-    if(Instruction *In = dyn_cast<Instruction>(baseptr))
-    {
-        int num = In->getNumOperands();
-        for(int i =0; i<num; i++)
+        errs()<<"\n The baseptr is pointer to struct if true.. : "<<ty->getPointerElementType()->isStructTy()<<"\n";
+        if(baseptr->hasName())
+             errs()<<"\n baseptr has name:  "<<baseptr->getName();
+        if(structty->isStructTy())
         {
-            Value* operand = In->getOperand(i);
-            operand->getType()->dump();
-            errs()<<"\n is struct : "<<operand->getType()->isStructTy();
-            if(operand->hasName())
-            {
-                errs()<<"\n has name:  "<<operand->getName();
+            errs()<<"\n baseptr struct name:  "<<structty->getStructName();
+            // now get the field index refered..--:
+
+            for (int i = GI->getNumOperands() - 2; i > 0; i--) {
+                    Type *ty = typeOfGetElementPtr(GI, i);
+                    assert(ty->isArrayTy() || ty->isStructTy());
+                    if (ty->isStructTy()) { // structure field
+                     // t.ta_type = TAINT_FLD;
+                     // t.ta_un.ta_fld.f_struct = ty;
+                      int index = cast<ConstantInt>
+                        (GI->getOperand(i + 1))->getZExtValue();
+
+                      errs()<<"\n\n At operand no: "<<i<<" with type : ";
+                      ty->dump();
+                      errs()<<" index is : "<<index;
+                    }
             }
         }
     }
-}
+
+    //get what struct it points to..
+//    if(Instruction *In = dyn_cast<Instruction>(baseptr))
+//    {
+//        errs()<<"\n\n The pointer element is isntructions";
+//        In->dump();
+//        int num = In->getNumOperands();
+//        for(int i =0; i<num; i++)
+//        {
+//            Value* operand = In->getOperand(i);
+//            operand->dump();
+//            errs()<<"\n Operand type: ";
+//            operand->getType()->dump();
+//            errs()<<"\n is struct : "<<operand->getType()->isStructTy();
+//            if(operand->getType()->isPointerTy())
+//                errs()<<"\n is pointer to struct : "<<operand->getType()->getPointerElementType()->isStructTy();
+//            if(operand->hasName())
+//            {
+//                errs()<<"\n has name:  "<<operand->getName();
+//            }
+//        }
+//    }
+//    else if(ty->isStructTy())
+//    {
+//        errs()<<"\n The basepointer is of type struct.. ";
+//    }
+//    else
+//    {
+//        errs()<<"\n Not instruction and base ptr type not struct.... ";
+//        baseptr->dump();
+
+//    }
+//}
+
+
 
     //check if the bae pointer is an struct type.. or pointer to struct.... else just get all operands and and check the same...
-    for(set<RelevantFields*>::iterator fieldIt = relevantFields.begin(); fieldIt != relevantFields.end(); ++fieldIt)
-    {
-        if(code) errs()<<"\n Function name read from file.. : "<<(*fieldIt)->functionName<<" parent funct name.. :"<<parentFunction->getName();
+//    for(set<RelevantFields*>::iterator fieldIt = relevantFields.begin(); fieldIt != relevantFields.end(); ++fieldIt)
+//    {
+//        if(code) errs()<<"\n Function name read from file.. : "<<(*fieldIt)->functionName<<" parent funct name.. :"<<parentFunction->getName();
 
-        if((*fieldIt)->functionName==parentFunction->getName())
-        {
-            if(code) errs()<<"\nIn function ... looking for.... : "<<(*fieldIt)->functionName<<" "<<(*fieldIt)->variable;
+//        if((*fieldIt)->functionName==parentFunction->getName())
+//        {
+//            if(code) errs()<<"\nIn function ... looking for.... : "<<(*fieldIt)->functionName<<" "<<(*fieldIt)->variable;
 
-            if(baseptr->hasName())
-            {
-                if(code)  errs()<<"\n The base ptr.. has name...!!";
-                if(baseptr->getName()== (*fieldIt)->variable)
-                {
-                    if(code) errs()<<"\nTesting for var : "<<(*fieldIt)->variable;
+//            if(baseptr->hasName())
+//            {
+//                if(code)  errs()<<"\n The base ptr.. has name...!!";
+//                if(baseptr->getName()== (*fieldIt)->variable)
+//                {
+//                    if(code) errs()<<"\nTesting for var : "<<(*fieldIt)->variable;
 
-                    int fieldIndex;
-                    for (int i = GI->getNumOperands() - 2; i > 0; i--) {
-                        Type *ty = GI->getType();
-                        //  assert(ty->isArrayTy() || ty->isStructTy());
-                        if (ty->isStructTy()) { // structure field
+//                    int fieldIndex;
+//                    for (int i = GI->getNumOperands() - 2; i > 0; i--) {
+//                        Type *ty = GI->getType();
+//                        //  assert(ty->isArrayTy() || ty->isStructTy());
+//                        if (ty->isStructTy()) { // structure field
 
-                            fieldIndex = cast<ConstantInt>(GI->getOperand(i + 1))->getZExtValue();
+//                            fieldIndex = cast<ConstantInt>(GI->getOperand(i + 1))->getZExtValue();
+//                            errs()<<"\n---field index..---- : "<<fieldIndex;
 
-                        }
-                    }
-                    //match index.
-                    if(fieldIndex == (*fieldIt)->index)
-                    {
-                        FieldVals.insert(GI);
-                        //update fields in graph.
-                        F_Graph->FieldsVal = FieldVals;
-                        if(code) errs()<<"\n\n   Found field";
-                        if(code) GI->dump();
-                    }
-                }
-            }
-            else
-                if(code)  errs()<<"\n The base ptr.. has NONAME...!!";
+//                        }
+//                    }
+//                    //match index.
+//                    if(fieldIndex == (*fieldIt)->index)
+//                    {
+//                        FieldVals.insert(GI);
+//                        //update fields in graph.
+//                        F_Graph->FieldsVal = FieldVals;
+//                        if(code) errs()<<"\n\n   Found field";
+//                        if(code) GI->dump();
 
-        }
-    }
+//                    }
+//                }
+//            }
+//            else
+//                if(code)  errs()<<"\n The base ptr.. has NONAME...!!";
+
+//        }
+//    }
+
+//end of fucnt
 }
 
 
@@ -1644,13 +1698,14 @@ void moduleDepGraph::matchParametersAndReturnValues_new(Function &F) {
 
 
 
-void moduleDepGraph::matchParametersAndReturnValues(Function &F) {
+void moduleDepGraph::matchParametersAndReturnValues(Function &F, Graph * Full_Graph) {
 
     // Only do the matching if F has any use
     if (F.isVarArg() || !F.hasNUsesOrMore(1)) {
         return;
     }
-    if(debug) errs()<<"\n Function arg matching for;; "<< F.getName();
+    //if(debug)
+        errs()<<"\n Function arg matching for;; "<< F.getName();
 
     // Data structure which contains the matches between formal and real parameters
     // First: formal parameter
@@ -1667,11 +1722,11 @@ void moduleDepGraph::matchParametersAndReturnValues(Function &F) {
 
         OpNode* argPHI = new OpNode(Instruction::PHI);
         GraphNode* argNode = NULL;
-        argNode = depGraph->addInst(argptr,-1,&F);
+        argNode = Full_Graph->addInst(argptr,-1,&F);
 
         if (argNode != NULL)
         {
-            depGraph->addEdge(argPHI, argNode);
+            Full_Graph->addEdge(argPHI, argNode);
             if (debug) errs()<<"\nAdding Edge between "<< argPHI->getLabel()<<" -- "<<argNode->getLabel();
         }
 
@@ -1730,13 +1785,13 @@ void moduleDepGraph::matchParametersAndReturnValues(Function &F) {
         CallSite::arg_iterator EI;
 
         for (i = 0, AI = CS.arg_begin(), EI = CS.arg_end(); AI != EI; ++i, ++AI) {
-            Parameters[i].second = depGraph->addInst(*AI,-1,&F);
+            Parameters[i].second = Full_Graph->addInst(*AI,-1,&F);
         }
 
         // Match formal and real parameters
         for (i = 0; i < Parameters.size(); ++i) {
 
-            depGraph->addEdge(Parameters[i].second, Parameters[i].first);
+            Full_Graph->addEdge(Parameters[i].second, Parameters[i].first);
             if(debug) errs()<<"\nAdding Edge between "<< Parameters[i].second->getLabel()<<" -- "<<Parameters[i].first->getLabel();
         }
 
@@ -1744,13 +1799,13 @@ void moduleDepGraph::matchParametersAndReturnValues(Function &F) {
         if (!noReturn) {
 
             OpNode* retPHI = new OpNode(Instruction::PHI);
-            GraphNode* callerNode = depGraph->addInst(caller,-1,&F);
-            depGraph->addEdge(retPHI, callerNode);
+            GraphNode* callerNode = Full_Graph->addInst(caller,-1,&F);
+            Full_Graph->addEdge(retPHI, callerNode);
 
             for (SmallPtrSetIterator<llvm::Value*> ri = ReturnValues.begin(),
                  re = ReturnValues.end(); ri != re; ++ri) {
-                GraphNode* retNode = depGraph->addInst(*ri,-1,&F);
-                depGraph->addEdge(retNode, retPHI);
+                GraphNode* retNode = Full_Graph->addInst(*ri,-1,&F);
+                Full_Graph->addEdge(retNode, retPHI);
             }
 
         }
@@ -1760,7 +1815,7 @@ void moduleDepGraph::matchParametersAndReturnValues(Function &F) {
             Parameters[i].second = NULL;
     }
 
-    depGraph->deleteCallNodes(&F);
+    Full_Graph->deleteCallNodes(&F);
 }
 
 
@@ -1979,9 +2034,9 @@ void moduleDepGraph::getcallPathFunctions()
 }
 
 
-void llvm::moduleDepGraph::deleteCallNodes(Function* F) {
-    depGraph->deleteCallNodes(F);
-}
+//void llvm::moduleDepGraph::deleteCallNodes(Function* F) {
+//    depGraph->deleteCallNodes(F);
+//}
 
 
 
@@ -2008,7 +2063,7 @@ void moduleDepGraph::ReadRelevantFields(){
     {
         while(srcFile >> line)
         {
-         //   if(code) errs() << " Reading fields--- ";
+           if(code) errs() << " Reading fields--- ";
             line.erase( std::remove_if( line.begin(), line.end(), ::isspace ), line.end() );
             RelevantFields * rs = new RelevantFields();
             rs->functionName = line;
