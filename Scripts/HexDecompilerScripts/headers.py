@@ -26,7 +26,15 @@ POLL_HEADER = "#include <poll.h>"
 REGISTER1 = "int _R1;"
 REGISTER2 = "int _R2;"
 REGISTER3 = "int _R3;"
+REGISTER4	= "int _R4;"
+REGISTER5 = "int _R5;"
+REGISTER6 = "int _R6;"
+REGISTER7 = "int _R7;"
+REGISTER8 = "int _R8;"
+REGISTER9 = "int _R9;"
+
 ZERO_FLAG = "int _ZF;"
+
 EVP_VAR = "void* EVP_rc4;"
 CS_VAR = "void* __CS__;"
 
@@ -165,6 +173,30 @@ def check_identifiers(c_filename, e_filename):
 	if (check_need_header(e_filename, "_R3") == 1):
 		if (check_header(c_filename, REGISTER3) == 0):
 			add_header(c_filename, REGISTER3)
+
+	if (check_need_header(e_filename, "_R4") == 1):
+		if (check_header(c_filename, REGISTER4) == 0):
+			add_header(c_filename, REGISTER4)
+
+	if (check_need_header(e_filename, "_R5") == 1):
+		if (check_header(c_filename, REGISTER5) == 0):
+			add_header(c_filename, REGISTER5)
+
+	if (check_need_header(e_filename, "_R6") == 1):
+		if (check_header(c_filename, REGISTER6) == 0):
+			add_header(c_filename, REGISTER6)
+
+	if (check_need_header(e_filename, "_R7") == 1):
+		if (check_header(c_filename, REGISTER7) == 0):
+			add_header(c_filename, REGISTER7)
+
+	if (check_need_header(e_filename, "_R8") == 1):
+		if (check_header(c_filename, REGISTER8) == 0):
+			add_header(c_filename, REGISTER8)
+
+	if (check_need_header(e_filename, "_R9") == 1):
+		if (check_header(c_filename, REGISTER9) == 0):
+			add_header(c_filename, REGISTER9)
 
 	# Check if we are missing identifier for EVP_rc4
 
