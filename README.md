@@ -4,16 +4,15 @@ This code generates taint flow information for the binary lifted bitcode files. 
 
 Prerequisites
 -------
-1.	LLVM 3.5 with corresponding clang (installed from Source http://llvm.org/releases/download.html 3.5 sources)
+1.	LLVM 3.7 with corresponding clang (installed from Source http://llvm.org/releases/download.html 3.7 sources)
 2.	Uses DSA pointer analysis and is required as a prerequisite pass before analysis.
 3.	Follow the instructions at (http://clang.llvm.org/get_started.html) for installation of LLVM, might need g++ installed which is not specified explicitly in the instructions.
 Setup
-This code is compatible with LLVM 3.5
+This code is compatible with LLVM 3.7
 1.	For DSA place the DSA and AssistDSA code in lib and the corresponding headers in the include directory of LLVM source. 
 2.	Perform make for DSA creating the appropriate required library.
-3.	Please place the "TaintAnalysis" directory in the lib/ directory of LLVM source.
-4.	Place the header file DominatorInternals.h from LLVM 3.3 version in the llvm/include/llvm/Analysis (this backward dependence will be rectified once complete upgrade to 3.5 is done)
-5.	Execute make in TaintAnalysis. (if LLVM is built in debug mode execute the RunMake.sh, or use the ENABLE_OPTIMIZED=0 flag while running make)
+3.	Please place the "DataFlowAnalysis" directory in the lib/ directory of LLVM source.
+5.	Execute make in DataFlowAnalysis. (if LLVM is built in debug mode execute the RunMake.sh, or use the ENABLE_OPTIMIZED=0 flag while running make)
 6.	This will generate the TaintAnalysis library to be loaded and run using the opt pass manager. 
 
 
