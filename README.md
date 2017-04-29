@@ -2,19 +2,34 @@ Taint Analysis
 =========
 This code generates taint flow information for the binary lifted bitcode files. The binary is decompiled using hex and run through scripts to translate it into a compilable C code. This is then used by clang to generate the LLVM bitcode file for the analysis input. 
 
-Prerequisites
+Installation
 -------
-1.	LLVM 3.7 with corresponding clang (installed from Source http://llvm.org/releases/download.html 3.7 sources)
-2.	Uses DSA pointer analysis and is required as a prerequisite pass before analysis.
-3.	Follow the instructions at (http://clang.llvm.org/get_started.html) for installation of LLVM, might need g++ installed which is not specified explicitly in the instructions.
-Setup
-This code is compatible with LLVM 3.7
-1.	For DSA place the DSA and AssistDSA code in lib and the corresponding headers in the include directory of LLVM source. 
-2.	Perform make for DSA creating the appropriate required library.
-3.	Please place the "DataFlowAnalysis" directory in the lib/ directory of LLVM source.
-5.	Execute make in DataFlowAnalysis. (if LLVM is built in debug mode execute the RunMake.sh, or use the ENABLE_OPTIMIZED=0 flag while running make)
-6.	This will generate the TaintAnalysis library to be loaded and run using the opt pass manager. 
 
+Tested on Ubuntu 16.04.
+
+1. apt-get install git cmake
+2. mkdir LLVM
+3. cd LLVM/
+4. wget http://releases.llvm.org/3.7.0/llvm-3.7.0.src.tar.xz
+5. tar -xvf llvm-3.7.0.src.tar.xz
+6. git clone -b PDG_DataFlowAnalysis https://github.com/TJAndHisStudents/TaintFlowAnalysis.git
+7. cp -r TaintFlowAnalysis/DSA/DSA/ llvm-3.7.0.src/lib/
+8. cp -r TaintFlowAnalysis/DSA/AssistDS/ llvm-3.7.0.src/lib/
+9. cp -r TaintFlowAnalysis/DSAHeaders/dsa/ llvm-3.7.0.src/include/
+10. cp -r TaintFlowAnalysis/DSAHeaders/assistDS/ llvm-3.7.0.src/include/
+11. cp -r TaintFlowAnalysis/DataFlowAnalysis/ llvm-3.7.0.src/lib/
+12. echo 'add_subdirectory(DSA)' >> llvm-3.7.0.src/lib/CMakeLists.txt 
+13. echo 'add_subdirectory(DataFlowAnalysis)' >> llvm-3.7.0.src/lib/CMakeLists.txt 
+14. cd llvm-3.7.0.src/
+15. mkdir build
+16. cd build
+17. cmake -G "Unix Makefiles" ../
+18. make ENABLE_OPTIMIZED=0
+
+Alternatively you can use our provided installation script. This script assumes you have git and cmake installed on your system.
+
+1. Copy install.sh to a location where you want LLVM and our tool installed
+2. sh install.sh
 
 Overview of the Tool
 --------
@@ -24,7 +39,7 @@ The taint sources i.e. the user input, network and adversary input are identifie
 Running the tool
 ---------
 Inputs required: To run the tool the following inputs need to be prepared: 
-1. C-like decompiled code from hex. 
+1. C-like decompiled code from Hex-Rays. 
 2. Manually update the c-like code to make it compilable in clang after running it through the provided scripts. 
 3. Generate the bitcode file from the de-compiled code.
 
