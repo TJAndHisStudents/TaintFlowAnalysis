@@ -30,16 +30,12 @@ bool ChopControlModule::runOnModule(Module &M)
 /* Insert necessary functions here */
 void ChopControlModule::processChops(Module &M, Graph *depGraph, std::set<Value*> source_vals, std::list<string> mediators){
 
-  
-  
-  // We will expect a list of functions so this will need some iteration support later
+ 
   //std::vector<std::string> mediator_functions;
-  //mediator_functions.push_back("sub_11F48");
-  //mediator_functions.push_back("sub_51D10");
 
   Graph *dataDependenceGraph = depGraph;
 
-	errs() << mediators.size() << "\n";
+	//errs() << mediators.size() << "\n";
 	mediators.pop_back();
   
   for(std::list<std::string>::const_iterator i = mediators.begin(); i != mediators.end(); i++)
@@ -49,13 +45,14 @@ void ChopControlModule::processChops(Module &M, Graph *depGraph, std::set<Value*
       Value* intra_return_val;
 
       // Report which function we are generating chops for.
-      errs() << "Generating chops for mediator function: ";
+			errs() << "\n\n\n================Analyzing Candidate Mediator: "<<med_function->getName()<<"===============\n";
+      errs() << "================Gathering Intra-Mediator parameters and return values===============\n\n";
       errs() << med_function->getName();
       errs() << "\n";
 
       /************** Gather values to compute intramediator chops ***************/
       
-      errs() << "Gathering intramediator parameters and return values.\n";
+      //errs() << "Gathering intramediator parameters and return values.\n";
       intra_arg_list = getArgVars(*med_function);
       intra_return_val = getReturnVar(*med_function);
 
@@ -89,6 +86,9 @@ void ChopControlModule::processChops(Module &M, Graph *depGraph, std::set<Value*
       
       if (intra_return_node)
       {
+
+	errs() << "================Processing Intra-Mediator Chop===============\n\n";
+
 
 	std::list<GraphNode*> intra_return_slice;
 	//intra_return_slice = computeReverseTaintSlice(intra_return_node, 100);
@@ -163,8 +163,7 @@ void ChopControlModule::processChops(Module &M, Graph *depGraph, std::set<Value*
       std::list<Instruction*> post_mediator_instructions;
       bool pre_med = true;
       bool post_med = false;
-      
-			errs() << "Gathering Data for pre/post chops ... \n";      
+      /*     
 
       for (Module::iterator mod = M.begin(), mod_e = M.end(); mod != mod_e; ++mod)
       {
@@ -214,19 +213,9 @@ void ChopControlModule::processChops(Module &M, Graph *depGraph, std::set<Value*
 	  }
 	
       }
-
-
-      errs() << "\n::::::::::::   Running queries on pre mediator chop  :::::::::::::::::\n\n\n";
-      runQueries(pre_mediator_instructions);
-
-
-      errs() << "\n::::::::::::   Running queries on post mediator chop  :::::::::::::::::\n\n\n";
-      runQueries(post_mediator_instructions);
-      
-      
+*/
+       
     }
-
-  
 }
 
 
@@ -244,10 +233,37 @@ int ChopControlModule::runQueries(std::list<Instruction*> inst_list)
       Instruction* temp_inst = (*inst_it);
 
       if (isa<CallInst>(temp_inst))
-	{
-	  errs() << "Call instruction on chop: " << *temp_inst << "\n";
+			{
+	  		errs() << "Call Inst: " << *temp_inst << "\n";
 	  
-	}
+			}
+			else if (isa<StoreInst>(temp_inst))
+			{
+				errs() << "Write Op: " << *temp_inst << "\n";
+			}
+			else
+			{
+				std::string string2;
+	   		llvm::raw_string_ostream rso_2(string2);
+	   		(&*temp_inst)->print(rso_2);
+	   		std::string str_string = "zext";
+				std::string str_string2 = "lshr";
+				std::string str_string3 = "xor";
+				std::string str_string4 = "and";
+				std::string str_string5 = "sub nsw";
+
+	   		if (
+						(string2.find(str_string) != std::string::npos) ||
+						(string2.find(str_string2) != std::string::npos) ||
+						(string2.find(str_string3) != std::string::npos) ||
+						(string2.find(str_string4) != std::string::npos) ||
+						(string2.find(str_string5) != std::string::npos)
+					 )
+				{	
+	     		errs() << "Modification Op: " << *temp_inst << "\n";
+				}
+			}
+
 
     }
 
@@ -279,20 +295,6 @@ int ChopControlModule::runQueries(std::list<Instruction*> inst_list)
 
    inst_it = inst_list.begin();
    inst_end_it = inst_list.end();
-
-   // Check for write ops on chop
-   for (; inst_it != inst_end_it; ++inst_it)
-    {
-
-      Instruction* temp_inst = (*inst_it);
-
-      if (isa<StoreInst>(temp_inst))
-	{
-	  errs() << "Write operation on chop: " << *temp_inst << "\n";
-	  
-	}
-
-    }
 
   
 
@@ -409,11 +411,39 @@ std::list<Instruction*> ChopControlModule::test_function(Function &F, Graph *dep
       (&*I)->print(rso);
 
       if (temp_inst.find(s2) != std::string::npos)
-	{
-	  instruction_list.push_back(I);
-	  errs() << *I;
-	  errs() << "\n";
-	}
+			{
+				if (
+						(temp_inst.find("and i32 %18,") != std::string::npos) ||
+						(temp_inst.find("sub nsw") != std::string::npos) ||
+						(temp_inst.find("xor") != std::string::npos) ||
+						(temp_inst.find("%12,") != std::string::npos) ||
+						(temp_inst.find("%11,") != std::string::npos) ||
+						(temp_inst.find("%24 =") != std::string::npos) ||
+						(temp_inst.find("%24,") != std::string::npos) ||
+						(temp_inst.find("%25,") != std::string::npos) ||
+						(temp_inst.find("%25 =") != std::string::npos) ||
+						(temp_inst.find("%21,") != std::string::npos) ||
+						(temp_inst.find("%21 ") != std::string::npos) ||
+						(temp_inst.find("%424 ") != std::string::npos) ||
+						(temp_inst.find("%424,") != std::string::npos) ||
+						(temp_inst.find("%17,") != std::string::npos) ||
+						(temp_inst.find("%17 ") != std::string::npos) ||
+						(temp_inst.find("%23 ") != std::string::npos)
+					 )
+				{
+					instruction_list.push_back(I);
+					errs() << *I<<"\n";
+
+				}
+			}
+			else if (
+					(temp_inst.find("%708") != std::string::npos)
+					)
+			{
+				instruction_list.push_back(I);
+				errs() << *I;
+				errs() << "\n";
+			}
     }
   }
 
@@ -437,15 +467,15 @@ std::vector<Value*> ChopControlModule::getArgVars(Function &F)
     Argument::user_iterator psUSeEnd = psArg->user_end();
     for (; psUSe != psUSeEnd ; ++psUSe)
     {
-      psUSe->print(errs());
-      errs() << "\n";
+      //psUSe->print(errs());
+      //errs() << "\n";
 
       Value *argVal = psUSe->getOperand(0);
       argValList.push_back(argVal);
       
       // We will want to return a list of these
-      errs() << psUSe->getOperand(0)->getName();
-      errs() << "\n";
+      //errs() << psUSe->getOperand(0)->getName();
+      //errs() << "\n";
     }
   }
 
@@ -472,21 +502,21 @@ Value* ChopControlModule::getReturnVar(Function &F)
       // Check if it is a return instruction
       if (ReturnInst *returnInst = dyn_cast<ReturnInst>(&*I))
       {
-	returnInst->print(errs());
-	errs() << "\n";
+	//returnInst->print(errs());
+	//errs() << "\n";
 
 	if (LoadInst *loadInst = dyn_cast<LoadInst>(prior))
 	{
-	  loadInst->print(errs());
-	  errs() << "\n";
-	  errs() << loadInst->getOperand(0)->getName();
-	  errs() << "\n";
+	  //loadInst->print(errs());
+	  //errs() << "\n";
+	  //errs() << loadInst->getOperand(0)->getName();
+	  //errs() << "\n";
 	  returnValue = loadInst->getOperand(0);
 
 	}
 	
-	errs() << returnInst->getReturnValue()->getName();
-	errs() << "\n";
+	//errs() << returnInst->getReturnValue()->getName();
+	//errs() << "\n";
 
 	// Return a copy of the return instruction
 	return_var = I;
@@ -506,16 +536,3 @@ void ChopControlModule::getAnalysisUsage(AnalysisUsage &AU) const {
 
 char ChopControlModule::ID = 0;
 static RegisterPass<ChopControlModule> S("-create-chops", "Controls all necessary modules to generate chops");
-
-
-
-
-
-
-
-
-
-
-
-
-

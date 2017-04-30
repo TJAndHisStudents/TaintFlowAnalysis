@@ -201,7 +201,7 @@ bool CallGraphWrapper::runOnModule(Module &M) {
             }
         }
 
-        errs()<<"\n Root Node ";
+        //errs()<<"\n Root Node ";
 
         //Start from the root node here and iterate over the call graph..
         // std::set<CallGraphNode> workList = RootNode->CalledFunctionsVector;
@@ -313,9 +313,9 @@ bool CallGraphWrapper::runOnModule(Module &M) {
       }
 
 */
-
-        errs()<<"\nDirect Calls  :"<<DirCall;
-        errs()<<"\nIndirect Calls : "<<IndCall;
+				errs() << "\nTotal Calls: " << DirCall + IndCall;
+        errs() << "\nDirect Calls: "<<DirCall;
+        errs() << "\nIndirect Calls: "<<IndCall;
 
 
 //        for(int i=0;i<10;i++)
@@ -369,7 +369,7 @@ bool CallGraphWrapper::runOnModule(Module &M) {
     fin.open("source_sink.txt"); //open file that contains start and end functions
     if (!fin.good())
     {
-        errs()<<"\nFile not found when loading source sink list\n";
+        errs()<<"\n\nFile not found when loading source sink list\n";
         return false;
     }
 

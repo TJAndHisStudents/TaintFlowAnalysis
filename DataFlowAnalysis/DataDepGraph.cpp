@@ -740,7 +740,7 @@ void moduleDepGraph::Process_Functions(Function* F, Graph* F_Graph, int SensDept
     //Check if call path already processed if yes, dont process and return, else process with the appropriate context.
 
     // if(debug)
-    errs()<<"\n Processing funtion recursive.. "<< F->getName() <<"  ";
+    errs()<<"\n Processing function: "<< F->getName() <<"  ";
     MDA = &getAnalysis<MemoryDependenceAnalysis>((*F));
 
     //Make individual graphs for each functions..
@@ -2490,7 +2490,7 @@ void moduleDepGraph::ReadRelevantFields(){
     std::string line;
     if(!srcFile)
     {
-        errs() << " Could not open the Field information file..? \n";
+        //errs() << " Could not open the Field information file \n";
     }
     else
     {

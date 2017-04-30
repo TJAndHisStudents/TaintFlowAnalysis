@@ -317,7 +317,7 @@ bool TaintFlow::runOnModule(Module &M) {
         errs()<<"\n Branch Inst tainted : "<<branches;
     } //closing the loop for inputdepVal
 
-    errs()<<"\n\n --- toal loookup instss.------: "<<LoopupInsts.size()<<"\n";
+    errs()<<"\n\n --- Total Lookup Insts.------: "<<LoopupInsts.size()<<"\n";
 //    for(set<Instruction*>::iterator lookupVal = LoopupInsts.begin(); lookupVal != LoopupInsts.end();++lookupVal)
 //    {
 //        (*lookupVal)->dump();
@@ -415,7 +415,7 @@ bool TaintFlow::runOnModule(Module &M) {
 	for(std::set<Value*>::iterator tv = inputDepValues.begin(); tv != inputDepValues.end(); ++tv)
     {
 
-        errs()<<(*tv)->getName() <<"\n";
+        //errs()<<(*tv)->getName() <<"\n";
 
 	}
 
@@ -423,13 +423,13 @@ bool TaintFlow::runOnModule(Module &M) {
 
     std::string mod_name = M.getModuleIdentifier();
     
-    errs() << "MOD IDENT " << mod_name << mod_name.find(".") << "\n";
+    //errs() << "MOD IDENT " << mod_name << mod_name.find(".") << "\n";
     int period_loc = mod_name.find(".");
     std::string article_name = mod_name.substr(0, period_loc);
     std::string mediator_file = article_name + "_mediator.txt";
 
-    errs() << article_name << "\n";
-    errs() << mediator_file << "\n";
+    //errs() << article_name << "\n";
+    //errs() << mediator_file << "\n";
 
     std::list<string> mediator_list;
 
@@ -449,7 +449,7 @@ bool TaintFlow::runOnModule(Module &M) {
       {
 				char buf[MAX_CHARS_PER_LINE];
 				fin.getline(buf, MAX_CHARS_PER_LINE);
-				errs() << buf << "\n";
+				//errs() << buf << "\n";
 				if ((buf != "\n") and (buf != " "))
 				{
 					mediator_list.push_back(buf);
@@ -471,7 +471,7 @@ void TaintFlow::updateTaintLabels()
 {
     set<GraphNode*> taintSourceNodes;
     //update base labels..
-    errs()<<"\n Input dep node sizze :"<<inputDepValues.size();
+    errs()<<"\nInput dep node size :"<<inputDepValues.size()<<"\n";
     for(std::set<Value*>::iterator tv = inputDepValues.begin(); tv != inputDepValues.end(); ++tv)
     {
         //  string appendVal = NULL;
@@ -486,13 +486,13 @@ void TaintFlow::updateTaintLabels()
 
         }
         else
-            errs()<<"\n No graph node found for current val:";
+            errs()<<"\nNo graph node found for current val:";
         //   if(appendVal!=NULL)
         //   sourceNode->taintSet.insert(appendVal);
     }
 
     //traverse and propagate the taint labels forward from the base label.
-    errs()<<"\n Source node sizze :"<<taintSourceNodes.size();
+    errs()<<"\nSource node size :"<<taintSourceNodes.size();
     for(set<GraphNode*>::iterator gnode = taintSourceNodes.begin(); gnode != taintSourceNodes.end();++gnode)
     {
         propagateLabel(*gnode);
@@ -509,7 +509,7 @@ void TaintFlow::propagateLabel(GraphNode* snode)
     std::set<string> parentTaintset;
 
     worklist.push_back(snode);
-    errs()<<"\n snode in worklist..:";
+    //errs()<<"\n source node in worklist..:";
 
     while (!worklist.empty()) {
         GraphNode* n = worklist.front();

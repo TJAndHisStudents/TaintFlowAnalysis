@@ -114,16 +114,16 @@ bool InputDep::runOnModule(Module &M) {
     ReadConfigFile();
     //ReadRelevantFields();
 
-    errs()<<"\n Read queries: ";
+    errs()<<"\nRead queries: ";
     for(set<QueryInput*>::iterator qit =queryInputs.begin();qit!=queryInputs.end();++qit)
     {
-        errs()<<"\n Operation : "<<(*qit)->operation;
+        errs()<<"\n\tOperation : "<<(*qit)->operation;
         set<string> labels = (*qit)->labels;
         for(set<string>::iterator label = labels.begin();label != labels.end();++label)
             errs()<<"  "<<*label;
     }
 
-    errs() << "\nTaint Inputs REad: " << taintSources.size();
+    errs() << "\n\nTaint Inputs: " << taintSources.size();
 
     set<Value*> storedVals;
     set<Value*> repeatVals;
@@ -669,7 +669,7 @@ bool InputDep::runOnModule(Module &M) {
                 if(strcmp(lab.c_str(),(*labit).c_str())==0)
                 {
                     vals.insert((*valit).first);
-                    errs()<<"\n Found map : "<<lab<<" value :";
+                    errs()<<"\n\t"<<lab<<" value :";
                     (*valit).first->dump();
                 }
             }
@@ -804,7 +804,7 @@ void InputDep::printer() {
          targetNames.end(); t != en; ++t) {
         //			errs() << *t << "\n";
     }
-    errs() << "==================================\n";
+    //errs() << "==================================\n";
 }
 
 void InputDep::ReadSources(){
@@ -813,7 +813,7 @@ void InputDep::ReadSources(){
     std::string file_Data,line;
     if(!inFile)
     {
-        errs() << " Could not open the Sources file \n";
+        errs() << "Could not open the Sources file \n";
     }
     else
     {
@@ -833,7 +833,7 @@ void InputDep::ReadTargets(){
     std::string line;
     if(!tgFile)
     {
-        errs() << " Could not open the targets file \n";
+        errs() << "Could not open the targets file \n";
     }
     else
     {
@@ -851,7 +851,7 @@ void InputDep::ReadFPTargets(){
     std::string line;
     if(!tgFile)
     {
-        errs() << " Could not open the FP targets file \n";
+        errs() << "Could not open the FP targets file \n";
     }
     else
     {
@@ -869,7 +869,7 @@ void InputDep::ReadTaintInput(){
     std::string line;
     if(!srcFile)
     {
-        errs() << " Could not open the taint Input file \n";
+        errs() << "Could not open the taint Input file \n";
     }
     else
     {
@@ -937,7 +937,7 @@ void InputDep::ReadConfigFile(){
     std::string line;
     if(!srcFile)
     {
-        errs() << " Could not open the Config file \n";
+        errs() << "Could not open the Config file \n";
     }
     else
     {
@@ -1003,7 +1003,7 @@ void InputDep::ReadMediatorInput(){
     std::string line;
     if(!srcFile)
     {
-        errs() << " Could not open the Mediator Input file \n";
+        errs() << "Could not open the Mediator Input file \n";
     }
     else
     {
@@ -1022,7 +1022,7 @@ void InputDep::ReadSinkInput(){
     std::string line;
     if(!srcFile)
     {
-        errs() << " Could not open the Sink Input file \n";
+        errs() << "Could not open the Sink Input file \n";
     }
     else
     {
@@ -1040,7 +1040,7 @@ void InputDep::ReadQueryInput(){
     std::string line;
     if(!srcFile)
     {
-        errs() << " Could not open the query Input file \n";
+        errs() << "Could not open the query Input file \n";
     }
     else
     {
