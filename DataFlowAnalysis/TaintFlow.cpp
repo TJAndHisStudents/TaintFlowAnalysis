@@ -21,6 +21,8 @@ Input(
 static cl::opt<bool, false> printall("printall", cl::desc("Prints all query data"), cl::NotHidden);
 static cl::opt<bool, false> printcond("printcond", cl::desc("Prints only conditionals"), cl::NotHidden);
 
+
+
 bool PrintTaintedExtCalls = true;
 
 
@@ -30,19 +32,8 @@ TaintFlow::TaintFlow() :
 }
 
 
-
-
-
 bool TaintFlow::runOnModule(Module &M) {
 
-    //Get the timing information for the analysis..done using -time-passes
-    //    if (Input.getValue() == llvm::cl::BOU_UNSET || Input.getValue()
-    //            == llvm::cl::BOU_TRUE) {
-    //        errs()<<"---getting from InputValues--------------\n";
-    //        InputValues &IV = getAnalysis<InputValues> ();
-    //        inputDepValues = IV.getInputDepValues();
-    //        //TODO:need to add the function to get the target functions here
-    //    } else {
     errs()<<"---getting from InputDep--------------\n";
     InputDep &IV = getAnalysis<InputDep> ();
     inputDepValues = IV.getInputDepValues();
@@ -52,13 +43,10 @@ bool TaintFlow::runOnModule(Module &M) {
     ValLabelmap = IV.getValueLabelMap();
     mediatorFunctions = IV.getMediators();
     queryinputs = IV.getQueryVals();
-    // targetVal = IV.getTargetValue();
-    //  PostDominatorTree &pdt = getAnalysis<PostDominatorTree>();
-    //   DominatorTree &DT = getAnalysis<DominatorTree>();
-    //  }
+
     moduleDepGraph &DDG = getAnalysis<moduleDepGraph> ();
 
-    //blockAssign &bssa = getAnalysis<blockAssign> ();
+
     depGraph = DDG.depGraph;   //bssa.newGraph;
     //DEBUG( // display dependence graph
     string Error;
@@ -72,6 +60,7 @@ bool TaintFlow::runOnModule(Module &M) {
     //	sys::Path Filename_path(Filename);
     //	llvm::DisplayGraph(Filename_path, true, GraphProgram::DOT);
     //	);
+
     int inputDepVal_count = 0;
     std::string appendVal ="a";
     std::set<Value*> inputDepValuespart;
@@ -110,6 +99,16 @@ bool TaintFlow::runOnModule(Module &M) {
             writeStrings = false;
         }
 
+        //To print the external functions which take the tainted values..
+        string fileNameTaintOut = tmp + "_taintOut.txt";
+
+        raw_fd_ostream FiletOut(fileNameTaintOut.c_str(), ErrorInfo,sys::fs::F_None);
+        if (ErrorInfo.value() != 0) {
+            errs() << "Error opening file " << fileNameTaintOut
+                   << " for writing! Error code: " << ErrorInfo.value() << " \n";
+            PrintTaintedExtCalls = false;
+        }
+
 
         taintGraphMap[currentTaintVal] = tainted;
 
@@ -119,7 +118,7 @@ bool TaintFlow::runOnModule(Module &M) {
         errs()<<"Number of total nodes updates: " <<NumNodes <<"\n\n";
 
 
-       //  PrintTainted(tainted);
+        //  PrintTainted(tainted);
         errs()<<"\n---------------------\n";
         //TODO: Memory error in the insert... verify and solve...
 
@@ -143,6 +142,7 @@ bool TaintFlow::runOnModule(Module &M) {
                 NumberofBlocks++;
                 for (BasicBlock::iterator I = BB->begin(), endI = BB->end(); I
                      != endI; ++I) {
+
                     GraphNode* g = depGraph->findNode(I);
                     if (tainted.count(g)) {
                         g->taintSet.insert(appendVal);
@@ -176,47 +176,48 @@ bool TaintFlow::runOnModule(Module &M) {
                             }
 
                         }
-												if (PrintTaintedExtCalls)
+                        if (PrintTaintedExtCalls)
                         {
-                                if(CallInst *ci = dyn_cast<CallInst>(I))
+                            if(CallInst *ci = dyn_cast<CallInst>(I))
+                            {
+                                CallSite cs(ci);
+                                Function * calledFunc = ci->getCalledFunction();
+                                if(calledFunc && calledFunc->isDeclaration())
                                 {
-                                    CallSite cs(ci);
-                                    Function * calledFunc = ci->getCalledFunction();
-                                    if(calledFunc && calledFunc->isDeclaration())
+                                    //    errs()<<"\nPROPAGATE: Call Site with called func and IS delaration.. !!";
+                                    //  CI->dump();
+                                    // HandleLibraryFunctions(CI,parentFunction);
+                                    //externalCalls.push_back(ci);
+                                    //Get args and check taint...
+                                    errs()<<"\n Tainted Ext call :"<<*ci;
+                                    CallSite::arg_iterator argptr;
+                                    CallSite::arg_iterator e;
+                                    unsigned i;
+
+                                    //Create the PHI nodes for the formal parameters
+                                    for (i = 0, argptr = cs.arg_begin(), e = cs.arg_end(); argptr != e; ++i, ++argptr)
                                     {
-                                        //    errs()<<"\nPROPAGATE: Call Site with called func and IS delaration.. !!";
-                                        //  CI->dump();
-                                        // HandleLibraryFunctions(CI,parentFunction);
-                                        //externalCalls.push_back(ci);
-                                        //Get args and check taint...
-                                        errs()<<"\n Tainted Ext call :"<<*ci;
-                                        CallSite::arg_iterator argptr;
-                                        CallSite::arg_iterator e;
-                                        unsigned i;
+                                        Value *argValue = argptr->get();
 
-                                        //Create the PHI nodes for the formal parameters
-                                        for (i = 0, argptr = cs.arg_begin(), e = cs.arg_end(); argptr != e; ++i, ++argptr) 
-																				{
-                                            Value *argValue = argptr->get();
-																						
-																						if(Instruction *inst = dyn_cast<Instruction>(argValue))
-																						{																						
+                                        if(Instruction *inst = dyn_cast<Instruction>(argValue))
+                                        {
 
-                                            	GraphNode* g = depGraph->findInstNode(inst);
-																					
-                                            	if (tainted.count(g)) 
-																							{
-                                              	  inst->dump();
-                                            	}
-																						}
+                                            GraphNode* g = depGraph->findInstNode(inst);
+
+                                            if (tainted.count(g))
+                                            {
+                                                inst->dump();
+                                                 FiletOut <<tmp<<","<< F->getName()<<","<<calledFunc->getName()<<","<<i<<","<<"ext"<<","<<appendVal<<"\n";
+                                            }
                                         }
-                                        // for()
                                     }
-
+                                    // for()
                                 }
-                        }
-												
-									
+
+                            }
+                        } //end if print tainted ext calls.
+
+
 
                         //Print all the lookup instructions with tainted values..:
 
@@ -263,20 +264,20 @@ bool TaintFlow::runOnModule(Module &M) {
 
 
                         //Print the line number info for the tainted line..:-
-//                        if (MDNode *N = I->getMetadata("dbg")) {  // Here I is an LLVM instruction
-//                          DILocation Loc(N);                      // DILocation is in DebugInfo.h
-//                          unsigned Line = Loc.getLineNumber();
-//                          StringRef File = Loc.getFilename();
-//                          StringRef Dir = Loc.getDirectory();
-//                          errs()<<"\n ^^^^^^^^^^^^^^^^^for inst   :";
-//                          I->dump();
-//                          errs()<<"\n Line number : "<<Line<<" File name : "<<File<<" Dir name : "<<Dir;
-//                        }
-//                        else
-//                        {
-//                            errs()<<"\n ~~~~~~~~~~~~~no info for inst   :";
-//                            I->dump();
-//                        }
+                        //                        if (MDNode *N = I->getMetadata("dbg")) {  // Here I is an LLVM instruction
+                        //                          DILocation Loc(N);                      // DILocation is in DebugInfo.h
+                        //                          unsigned Line = Loc.getLineNumber();
+                        //                          StringRef File = Loc.getFilename();
+                        //                          StringRef Dir = Loc.getDirectory();
+                        //                          errs()<<"\n ^^^^^^^^^^^^^^^^^for inst   :";
+                        //                          I->dump();
+                        //                          errs()<<"\n Line number : "<<Line<<" File name : "<<File<<" Dir name : "<<Dir;
+                        //                        }
+                        //                        else
+                        //                        {
+                        //                            errs()<<"\n ~~~~~~~~~~~~~no info for inst   :";
+                        //                            I->dump();
+                        //                        }
 
                     }
 
@@ -317,23 +318,23 @@ bool TaintFlow::runOnModule(Module &M) {
         errs()<<"\n Branch Inst tainted : "<<branches;
     } //closing the loop for inputdepVal
 
-    errs()<<"\n\n --- toal loookup instss.------: "<<LoopupInsts.size()<<"\n";
-//    for(set<Instruction*>::iterator lookupVal = LoopupInsts.begin(); lookupVal != LoopupInsts.end();++lookupVal)
-//    {
-//        (*lookupVal)->dump();
-//        if(Instruction * ssoInst = dyn_cast<Instruction>(*lookupVal))
-//        {
-//            errs()<<" in func: "<<ssoInst->getParent()->getParent()->getName();
-//            DebugLoc Loc = ssoInst->getDebugLoc();
-//             // Here I is an LLVM instruction
-//              unsigned Line = Loc.getLine();
-//          //    StringRef File = Loc.getFilename();
-//           //   StringRef Dir = Loc.getDirectory();
-//              errs()<<"\nLine: "<<Line; //<<" File : "<<File<<"   Dir  :"<<Dir<<"\n";
-//              Loc.dump(M.getContext());
+    errs()<<"\n\n --- Total Lookup Insts.------: "<<LoopupInsts.size()<<"\n";
+    //    for(set<Instruction*>::iterator lookupVal = LoopupInsts.begin(); lookupVal != LoopupInsts.end();++lookupVal)
+    //    {
+    //        (*lookupVal)->dump();
+    //        if(Instruction * ssoInst = dyn_cast<Instruction>(*lookupVal))
+    //        {
+    //            errs()<<" in func: "<<ssoInst->getParent()->getParent()->getName();
+    //            DebugLoc Loc = ssoInst->getDebugLoc();
+    //             // Here I is an LLVM instruction
+    //              unsigned Line = Loc.getLine();
+    //          //    StringRef File = Loc.getFilename();
+    //           //   StringRef Dir = Loc.getDirectory();
+    //              errs()<<"\nLine: "<<Line; //<<" File : "<<File<<"   Dir  :"<<Dir<<"\n";
+    //              Loc.dump(M.getContext());
 
-//        }
-//    }
+    //        }
+    //    }
 
     errs()<<"\n\n **********************************--- \n\n";
 
@@ -360,13 +361,13 @@ bool TaintFlow::runOnModule(Module &M) {
                 if (tainted.count(g)) {
 
 
-//                    errs()<<"\n ----Label info for each value..:";
-//                    I->dump();
-//                    errs()<<" ===size:  "<<g->taintSet.size();
-//                    for(set<string>::iterator label = g->taintSet.begin();label!=g->taintSet.end();++label)
-//                    {
-//                        errs()<<" "<<*label;
-//                    }
+                    //                    errs()<<"\n ----Label info for each value..:";
+                    //                    I->dump();
+                    //                    errs()<<" ===size:  "<<g->taintSet.size();
+                    //                    for(set<string>::iterator label = g->taintSet.begin();label!=g->taintSet.end();++label)
+                    //                    {
+                    //                        errs()<<" "<<*label;
+                    //                    }
 
 
                     LLVMContext& C = I->getContext();
@@ -410,51 +411,51 @@ bool TaintFlow::runOnModule(Module &M) {
         (*st)->Print();
     }
 
-	
 
-	for(std::set<Value*>::iterator tv = inputDepValues.begin(); tv != inputDepValues.end(); ++tv)
+
+    for(std::set<Value*>::iterator tv = inputDepValues.begin(); tv != inputDepValues.end(); ++tv)
     {
 
-        errs()<<(*tv)->getName() <<"\n";
+        //errs()<<(*tv)->getName() <<"\n";
 
-	}
+    }
 
 
 
     std::string mod_name = M.getModuleIdentifier();
     
-    errs() << "MOD IDENT " << mod_name << mod_name.find(".") << "\n";
+    //errs() << "MOD IDENT " << mod_name << mod_name.find(".") << "\n";
     int period_loc = mod_name.find(".");
     std::string article_name = mod_name.substr(0, period_loc);
     std::string mediator_file = article_name + "_mediator.txt";
 
-    errs() << article_name << "\n";
-    errs() << mediator_file << "\n";
+    //errs() << article_name << "\n";
+    //errs() << mediator_file << "\n";
 
     std::list<string> mediator_list;
 
     ifstream fin;
     fin.open(mediator_file);
     if (!fin.good())
-      {
-				errs() << "\nMediator File not found...?\n";
-				return false;
-      }
+    {
+        errs() << "\nMediator File not found...?\n";
+        return false;
+    }
 
     const int MAX_CHARS_PER_LINE = 512;
     const int MAX_TOKENS_PER_LINE = 20;
     const char* token[MAX_TOKENS_PER_LINE] = {};
 
     while (!fin.eof())
-      {
-				char buf[MAX_CHARS_PER_LINE];
-				fin.getline(buf, MAX_CHARS_PER_LINE);
-				errs() << buf << "\n";
-				if ((buf != "\n") and (buf != " "))
-				{
-					mediator_list.push_back(buf);
- 				}     
-			}
+    {
+        char buf[MAX_CHARS_PER_LINE];
+        fin.getline(buf, MAX_CHARS_PER_LINE);
+        //errs() << buf << "\n";
+        if ((buf != "\n") and (buf != " "))
+        {
+            mediator_list.push_back(buf);
+        }
+    }
     
     ChopControlModule *CCM = &getAnalysis<ChopControlModule>();
     CCM->processChops(M, depGraph, inputDepValues, mediator_list);
@@ -465,13 +466,11 @@ bool TaintFlow::runOnModule(Module &M) {
 
 
 
-
-
 void TaintFlow::updateTaintLabels()
 {
     set<GraphNode*> taintSourceNodes;
     //update base labels..
-    errs()<<"\n Input dep node sizze :"<<inputDepValues.size();
+    errs()<<"\nInput dep node size :"<<inputDepValues.size()<<"\n";
     for(std::set<Value*>::iterator tv = inputDepValues.begin(); tv != inputDepValues.end(); ++tv)
     {
         //  string appendVal = NULL;
@@ -486,13 +485,13 @@ void TaintFlow::updateTaintLabels()
 
         }
         else
-            errs()<<"\n No graph node found for current val:";
+            errs()<<"\nNo graph node found for current val:";
         //   if(appendVal!=NULL)
         //   sourceNode->taintSet.insert(appendVal);
     }
 
     //traverse and propagate the taint labels forward from the base label.
-    errs()<<"\n Source node sizze :"<<taintSourceNodes.size();
+    errs()<<"\nSource node size :"<<taintSourceNodes.size();
     for(set<GraphNode*>::iterator gnode = taintSourceNodes.begin(); gnode != taintSourceNodes.end();++gnode)
     {
         propagateLabel(*gnode);
@@ -509,7 +508,7 @@ void TaintFlow::propagateLabel(GraphNode* snode)
     std::set<string> parentTaintset;
 
     worklist.push_back(snode);
-    errs()<<"\n snode in worklist..:";
+    //errs()<<"\n source node in worklist..:";
 
     while (!worklist.empty()) {
         GraphNode* n = worklist.front();
@@ -636,7 +635,7 @@ void TaintFlow::HandleQueries(Module& M)
             }
         }
 
- //       int branches =0;
+        //       int branches =0;
         errs()<<"\n Intersect graph size :"<<intersectGraph_val.size();
         errs()<<"\n--------------------------";
 
@@ -751,8 +750,6 @@ void TaintFlow::getSinkSourceDependence(){
 }
 
 
-
-
 void TaintFlow::getSinkSourceBlockDependence(){
 
     errs()<<"\n \nFunction getting called..!!";
@@ -831,8 +828,6 @@ void testProcessing(){
 }
 
 
-
-
 set<Value*> TaintFlow::getTaintedVals(std::set<GraphNode*> tainted)
 {
     set<Value*> taintedVals;
@@ -868,10 +863,6 @@ set<Value*> TaintFlow::getTaintedVals(std::set<GraphNode*> tainted)
 
     return taintedVals;
 }
-
-
-
-
 
 
 void TaintFlow::PrintTainted(std::set<GraphNode*> tainted)
@@ -944,8 +935,6 @@ void TaintFlow::PrintTainted(std::set<GraphNode*> tainted)
 }
 
 
-
-
 bool TaintFlow::isValueTainted(Value* v) {
     GraphNode* g = depGraph->findNode(v);
     return tainted.count(g);
@@ -964,7 +953,7 @@ void TaintFlow::getAnalysisUsage(AnalysisUsage &AU) const {
     //  AU.addRequired<DominatorTree> ();
     // AU.addRequired<AndersAA> ();
     //AU.addRequired<hookPlacement> ();
-	AU.addRequired<ChopControlModule>();
+    AU.addRequired<ChopControlModule>();
 }
 
 char TaintFlow::ID = 0;

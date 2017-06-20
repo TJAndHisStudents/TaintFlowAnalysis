@@ -20,6 +20,7 @@
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/Instructions.h"
+#include "llvm/IR/InstIterator.h"
 #include "llvm/IR/User.h"
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/Metadata.h"
@@ -37,6 +38,9 @@
 #include<string>
 #include <map>
 #include <fstream>
+#include<utility>
+#include<string.h>
+#include <list>
 
 
 
@@ -99,6 +103,20 @@ public:
 };
 
 
+
+typedef struct {
+    string programPath;
+    string program;
+    string caller;
+    string callee;
+    int argNum;
+    string t_type;
+    string taintLabel;
+    bool isReturn;
+    bool isGlobal;
+} extTaint;
+
+
 class InputDep : public ModulePass {
 	private:
         std::set<Value*> inputDepValues;
@@ -121,6 +139,7 @@ class InputDep : public ModulePass {
 
 //        std::set<RelevantFields*> relevantFields;
         std::set<Value*> inputUses;
+        list<extTaint> extTaint_set;
 		bool runOnModule(Module &M);
 	public:
 		static char ID; // Pass identification, replacement for typeid.
@@ -136,6 +155,9 @@ class InputDep : public ModulePass {
         std::set<std::string> getMediators();
         std::set<std::string> getSinks();
         std::set<QueryInput*> getQueryVals();
+
+        list<pair<string, Function*> > externallyCalled;
+
         ConfigInfo getConfigInfo();
 //        std::set<RelevantFields*>  getFields();
         void ListAllUses(Value* Input, Function *F);
@@ -149,6 +171,10 @@ class InputDep : public ModulePass {
         void ReadSinkInput();
         void ReadQueryInput();
         void ReadConfigFile();
+
+        string getProgramName(string progPath);
+        void ReadExtTaintInput();
+        void AddExtTaint(Module &M);
 //        void ReadRelevantFields();
 };
 

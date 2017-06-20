@@ -54,6 +54,7 @@ class TaintFlow : public ModulePass {
 		std::set<GraphNode*> tainted;
         std::map<Value*, set<GraphNode*> > taintGraphMap;
         Value * targetVal;
+
 	public:
 		static char ID;
 		void getAnalysisUsage(AnalysisUsage &AU) const;

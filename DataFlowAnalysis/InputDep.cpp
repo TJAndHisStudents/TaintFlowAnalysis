@@ -22,6 +22,8 @@ cl::opt<std::string> ConfigFile("configFile", cl::desc("<Config file for taint a
 
 cl::opt<bool> consString("consString",cl::desc("Set to compare constant strings with inputs."),cl::init("-"));
 
+cl::opt<std::string> extTaintFile("extTaint", cl::desc("<External Taint file>"), cl::init("-"));
+
 //TODO: Verify signature
 
 /*
@@ -114,16 +116,16 @@ bool InputDep::runOnModule(Module &M) {
     ReadConfigFile();
     //ReadRelevantFields();
 
-    errs()<<"\n Read queries: ";
+    errs()<<"\nRead queries: ";
     for(set<QueryInput*>::iterator qit =queryInputs.begin();qit!=queryInputs.end();++qit)
     {
-        errs()<<"\n Operation : "<<(*qit)->operation;
+        errs()<<"\n\tOperation : "<<(*qit)->operation;
         set<string> labels = (*qit)->labels;
         for(set<string>::iterator label = labels.begin();label != labels.end();++label)
             errs()<<"  "<<*label;
     }
 
-    errs() << "\nTaint Inputs REad: " << taintSources.size();
+    errs() << "\n\nTaint Inputs: " << taintSources.size();
 
     set<Value*> storedVals;
     set<Value*> repeatVals;
@@ -669,7 +671,7 @@ bool InputDep::runOnModule(Module &M) {
                 if(strcmp(lab.c_str(),(*labit).c_str())==0)
                 {
                     vals.insert((*valit).first);
-                    errs()<<"\n Found map : "<<lab<<" value :";
+                    errs()<<"\n\t"<<lab<<" value :";
                     (*valit).first->dump();
                 }
             }
@@ -686,6 +688,189 @@ bool InputDep::runOnModule(Module &M) {
 
 
 
+
+///Functions to handle External Taint in libraries..
+string InputDep::getProgramName(string progPath)
+{
+    //string progPath = externalTaint.programPath;
+    progPath.erase( std::remove_if( progPath.begin(), progPath.end(), ::isspace ), progPath.end() );
+    //errs()<<" \n Line :-  ",line;
+    char delimiter = '/';
+    string acc = "";
+    for(int i = 0; i < progPath.size(); i++)
+    {
+        if(progPath[i] == delimiter)
+        {
+            acc = "";
+        }
+        else
+            acc += progPath[i];
+    }
+    string progName = acc;
+    // errs()<<"\n Program Name "<<progName;
+
+    return progName;
+}
+
+
+//Function to read the taint coming from different modules.. ext calls, or returning taint or global taint.
+void InputDep::ReadExtTaintInput(){
+    //Read external calls taint..
+    std::ifstream srcFile (extTaintFile.c_str(),std::ifstream::in);
+    std::string line;
+    if(!srcFile)
+    {
+        //errs() << " Could not open the external taint Input file \n";
+    }
+    else
+    {
+        while(srcFile >> line)
+        {
+            line.erase( std::remove_if( line.begin(), line.end(), ::isspace ), line.end() );
+            //errs()<<" \n Line :-  ",line;
+            char delimiter = ',';
+            vector<string> str;
+            string acc = "";
+            for(int i = 0; i < line.size(); i++)
+            {
+                if(line[i] == delimiter)
+                {
+                    str.push_back(acc);
+                    acc = "";
+                }
+                else
+                    acc += line[i];
+            }
+            str.push_back(acc);
+
+            //Read the tokens in sequence and add in appropriate stuct..
+            extTaint externalTaint;
+            externalTaint.programPath = str.at(0);
+            externalTaint.caller = str.at(1);
+            externalTaint.callee = str.at(2);
+            externalTaint.argNum = atoi(str.at(3).c_str());
+            externalTaint.t_type = str.at(4);
+            //externalTaint.taintLabel = str.at(5);
+
+
+            //Get the program name only...
+            string progName = getProgramName(externalTaint.programPath);
+            externalTaint.program = progName;
+            if(strcmp(externalTaint.t_type.c_str(),"ret")==0)
+                externalTaint.taintLabel = str.at(5);
+            else
+                externalTaint.taintLabel = str.at(5) + "___"+progName;
+            extTaint_set.push_back(externalTaint);
+
+            //str.push_back(acc);
+        }
+    }
+}
+
+
+//Function that adds the new taint sources based on the external taint input...
+void InputDep::AddExtTaint(Module &M)
+{
+    //iterate through the module.. when a match for the ext param is found
+
+
+    /*1.	if caller not present then look for function, if present, add the taints on formal arguments of the externally called function. (taint in library)
+      2.	If caller present then look for call to (external) function and add updated taint on the arguments. (returning taint on arguments....!)
+      3.	If caller present and is of type - return type, look for call to function and add updated taint label to the ret val of the call stmt.(returning taint on ret val)
+      4.	If caller not present and is return type…  (Invalid option)
+    */
+
+    for (Module::iterator F = M.begin(), E = M.end(); F != E; F++) {
+        string funcName = F->getName();
+        //check if caller or calleee.. both cannot be in the same module anyways..what happens when func with same name.. e.g main.!
+        //For now process ext call... process returning taint later..
+        for(list<extTaint>::iterator extT = extTaint_set.begin(); extT != extTaint_set.end();++extT)
+        {
+            if((strcmp(extT->t_type.c_str(),"ext")==0) && funcName==extT->callee)
+            {
+                //nt  errs()<<"\n ext match found...";
+                //Record for outputting returning taints..
+                pair<string,Function*> extCall;
+                extCall.first = extT->caller;
+                extCall.second = F;
+                externallyCalled.push_back(extCall);
+
+                Function::arg_iterator argptr;
+                Function::arg_iterator e;
+                unsigned i;
+
+                for (i = 0, argptr = F->arg_begin(), e = F->arg_end(); argptr != e; ++i, ++argptr)
+                {
+                    if(i==extT->argNum)
+                    {
+                        Value *argValue = dyn_cast<Value>(argptr);
+                        inputDepValues.insert(argValue);
+                        ValLabelmap[argValue] = extT->taintLabel.c_str();
+                    }
+                }
+
+
+            }
+            else if((strcmp(extT->t_type.c_str(),"ret")==0) && funcName==extT->caller)
+            {
+
+                //Caller matched.. attach the returning taint on the call instruction
+                //iterate over instructions to find the call stmt to the callee...
+                //   errs()<<"\n Returning taint detected.. for caller :"<<funcName;
+                int retArgnum = extT->argNum;
+                for (inst_iterator I = inst_begin(F), J = inst_end(F); I != J; I++) {
+                    if (CallInst *ci = dyn_cast<CallInst>(&*I)) {
+
+                        ///Check if extrenal call with a pointer param, if so run the taint check for each taint on the param and write in the file.
+                        //errs()<<"\nExternal call Check.....";
+                        Function * calledFunc = ci->getCalledFunction();
+                        if(calledFunc && calledFunc->isDeclaration())
+                        {
+                            if(calledFunc->getName()==extT->callee)
+                            {
+                                //callins to the ext call found.. add the returning taint here..
+                                //     errs()<<"\n found the ext call to map ret edges.."<<retArgnum;
+                                //    ci->dump();
+                                if(retArgnum==-1)
+                                {
+                                    //Add taint label to return value.
+                                    //      errs()<<"\n IDentifying taint for return value..";
+
+                                    Value* retValue = dyn_cast<Value>(ci);
+                                    inputDepValues.insert(retValue);
+                                    ValLabelmap[retValue] = extT->taintLabel.c_str();
+
+
+                                }
+                                else
+                                { //Add taint label to the argument.
+                                    //   errs()<<"\n IDentifying taint for argument value..";
+                                    int argNum = ci->getNumArgOperands();
+                                    if(retArgnum<argNum)
+                                    {
+                                        Value* taintedArg = ci->getArgOperand(retArgnum);
+                                        inputDepValues.insert(taintedArg);
+                                        ValLabelmap[taintedArg] = extT->taintLabel.c_str();
+
+                                    }
+
+                                }
+
+
+                            }
+
+                        }
+                    }
+                } //end of inst iterator.
+                //------
+            }
+        }
+    }
+
+}
+
+
+/// End of functions to handle external Taint.
 
 
 
@@ -790,9 +975,6 @@ void InputDep::ListAllUses(Value* Input, Function* F)
 
 
 
-
-
-
 void InputDep::printer() {
     errs() << "\n\n===Input dependant values:====\n";
     for (std::set<Value*>::iterator i = inputDepValues.begin(), e =
@@ -804,7 +986,7 @@ void InputDep::printer() {
          targetNames.end(); t != en; ++t) {
         //			errs() << *t << "\n";
     }
-    errs() << "==================================\n";
+    //errs() << "==================================\n";
 }
 
 void InputDep::ReadSources(){
@@ -813,7 +995,7 @@ void InputDep::ReadSources(){
     std::string file_Data,line;
     if(!inFile)
     {
-        errs() << " Could not open the Sources file \n";
+        errs() << "Could not open the Sources file \n";
     }
     else
     {
@@ -833,7 +1015,7 @@ void InputDep::ReadTargets(){
     std::string line;
     if(!tgFile)
     {
-        errs() << " Could not open the targets file \n";
+        errs() << "Could not open the targets file \n";
     }
     else
     {
@@ -851,7 +1033,7 @@ void InputDep::ReadFPTargets(){
     std::string line;
     if(!tgFile)
     {
-        errs() << " Could not open the FP targets file \n";
+        errs() << "Could not open the FP targets file \n";
     }
     else
     {
@@ -869,7 +1051,7 @@ void InputDep::ReadTaintInput(){
     std::string line;
     if(!srcFile)
     {
-        errs() << " Could not open the taint Input file \n";
+        errs() << "Could not open the taint Input file \n";
     }
     else
     {
@@ -937,7 +1119,7 @@ void InputDep::ReadConfigFile(){
     std::string line;
     if(!srcFile)
     {
-        errs() << " Could not open the Config file \n";
+        errs() << "Could not open the Config file \n";
     }
     else
     {
@@ -1003,7 +1185,7 @@ void InputDep::ReadMediatorInput(){
     std::string line;
     if(!srcFile)
     {
-        errs() << " Could not open the Mediator Input file \n";
+        errs() << "Could not open the Mediator Input file \n";
     }
     else
     {
@@ -1022,7 +1204,7 @@ void InputDep::ReadSinkInput(){
     std::string line;
     if(!srcFile)
     {
-        errs() << " Could not open the Sink Input file \n";
+        errs() << "Could not open the Sink Input file \n";
     }
     else
     {
@@ -1040,7 +1222,7 @@ void InputDep::ReadQueryInput(){
     std::string line;
     if(!srcFile)
     {
-        errs() << " Could not open the query Input file \n";
+        errs() << "Could not open the query Input file \n";
     }
     else
     {
