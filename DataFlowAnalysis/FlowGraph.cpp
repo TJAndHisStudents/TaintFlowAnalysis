@@ -2,6 +2,7 @@
 
 #define debug false
 #define code false
+#define fdb false
 
 #define printMem false
 using namespace llvm;
@@ -1635,9 +1636,12 @@ std::set<GraphNode*> Graph::findNodes(std::set<Value*> values) {
     for (std::set<Value*>::iterator i = values.begin(), end = values.end(); i
          != end; i++) {
 
-        if (GraphNode* node = findNode(*i)) {
-            result.insert(node);
-        }
+//        if (GraphNode* node = findNode(*i)) {
+//            result.insert(node);
+//        }
+                if (GraphNode* node = findInstNode(*i)) {
+                    result.insert(node);
+                }
 
     }
 
@@ -1880,6 +1884,22 @@ int llvm::Graph::getNumControlEdges() {
 
 std::set<GraphNode*> llvm::Graph::getDepValues(std::set<llvm::Value*> sources,
                                                bool forward) {
+
+    if(fdb)
+    {
+        for(std::set<llvm::Value*>::iterator s = sources.begin(),es = sources.end();s!=es;++s)
+        {
+            {
+                Instruction* inst = dyn_cast<Instruction>(*s);
+                if(inst)
+                {Function *F = inst->getParent()->getParent();
+                    if(F)
+                        errs()<<"\n Function : "<<F->getName();
+                }
+            }
+            errs()<<"\nSource Passed:  :"<<**s;
+        }
+    }
     unsigned long nnodes = nodes.size();
     std::set<GraphNode*> visited;
     std::set<GraphNode*> sourceNodes = findNodes(sources);
@@ -1887,15 +1907,18 @@ std::set<GraphNode*> llvm::Graph::getDepValues(std::set<llvm::Value*> sources,
     std::map<GraphNode*, edgeType> neigh;
 
     //NT: debug..
-    // errs()<<"Source nodes count.  : "<<sourceNodes.size();
+     if(fdb) errs()<<"\nSource nodes count.  : "<<sourceNodes.size();
+
 
     for (std::set<GraphNode*>::iterator i = sourceNodes.begin(), e =
          sourceNodes.end(); i != e; ++i) {
+        if(fdb) errs()<<"\n\n Source node identified :"<<(*i)->getLabel()<<" name  "<<(*i)->getName();
         worklist.push_back(*i);
     }
     while (!worklist.empty()) {
         GraphNode* n = worklist.front();
-        //	DEBUG(errs() << worklist.size() << "/" << visited.size() << "/" << nnodes << "\n");
+
+            DEBUG(errs() << worklist.size() << "/" << visited.size() << "/" << nnodes << "\n");
         DEBUG(assert(worklist.size() <= nnodes && "Problem with nodes"));
         if (forward)
             neigh = n->getSuccessors();
@@ -1903,6 +1926,7 @@ std::set<GraphNode*> llvm::Graph::getDepValues(std::set<llvm::Value*> sources,
             neigh = n->getPredecessors();
         for (std::map<GraphNode*, edgeType>::iterator i = neigh.begin(), e =
              neigh.end(); i != e; ++i) {
+             if(fdb) errs()<<"\n Successror for :- :"<<n->getLabel()<<" is "<<(i->first)->getLabel()<<" name  "<<(i->first)->getName();
             if (!visited.count(i->first)) {
                 worklist.push_back(i->first);
                 visited.insert(i->first);
@@ -1910,6 +1934,7 @@ std::set<GraphNode*> llvm::Graph::getDepValues(std::set<llvm::Value*> sources,
         }
         worklist.pop_front();
     }
+    errs()<<"\n Visited nodes count.  : "<<visited.size();
     return visited;
 }
 

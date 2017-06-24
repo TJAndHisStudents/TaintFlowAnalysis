@@ -5,6 +5,7 @@
 #include "llvm/ADT/PostOrderIterator.h"
 #define debug false
 #define code false
+#define fdb false
 
 bool useCallStrings =true;
 bool AddControlEdges = false;
@@ -126,12 +127,18 @@ bool moduleDepGraph::runOnModule(Module &M) {
      for (Module::iterator Fit = M.begin(), Fend = M.end(); Fit != Fend; ++Fit) {
          Function *F = Fit;
          if (F && !F->isDeclaration()) {
-                 Graph* Fdep = new Graph();
+                // Graph* Fdep = new Graph();
                  //     if(code) errs()<<"\n\n Processing function fdep graph.. for "<<F->getName();
                  //      Process_Functions(F,Fdep,SensitivityDepth);
                  if(code) errs()<<"\n Processing function topdown graph.. for "<<F->getName()<<"\n";
                  Process_Functions(F,TopDownGraph,SensitivityDepth);
-                 FuncDepGraphs[F] = Fdep;
+                 if(fdb)
+                 {
+                 int NumNodes = TopDownGraph->getNodes().size();
+                 errs()<<"Graph nodes updated : " <<NumNodes <<"\n\n";
+                 }
+
+                // FuncDepGraphs[F] = Fdep;
                  std::string tmp = F->getName();
                  // replace(tmp.begin(), tmp.end(), '\\', '_');
                  std::string Filename = "../../demo1_" + tmp + ".dot";
@@ -143,7 +150,7 @@ bool moduleDepGraph::runOnModule(Module &M) {
      }
 
      //Process each call site in sequence..
-     Graph * moduleGraph = new Graph();
+   //  Graph * moduleGraph = new Graph();
 
      errs()<<"\n Process the call inst in each function..";
      for (Module::iterator Fit = M.begin(), Fend = M.end(); Fit != Fend; ++Fit) {
@@ -563,7 +570,7 @@ void moduleDepGraph::TopDownProcessing(Function * F)
                     {
                         Process_CallSite(Inst,calledFunc);
 
-                        Graph * CallF_Graph = FuncDepGraphs[calledFunc];
+                      //  Graph * CallF_Graph = FuncDepGraphs[calledFunc];
                         // map params and merge graph..
                     }
                 } //if called func
@@ -740,7 +747,7 @@ void moduleDepGraph::Process_Functions(Function* F, Graph* F_Graph, int SensDept
     //Check if call path already processed if yes, dont process and return, else process with the appropriate context.
 
     // if(debug)
-    errs()<<"\n Processing funtion recursive.. "<< F->getName() <<"  ";
+    errs()<<"\n Processing function: "<< F->getName() <<"  ";
     MDA = &getAnalysis<MemoryDependenceAnalysis>((*F));
 
     //Make individual graphs for each functions..
@@ -2490,7 +2497,7 @@ void moduleDepGraph::ReadRelevantFields(){
     std::string line;
     if(!srcFile)
     {
-        errs() << " Could not open the Field information file..? \n";
+        //errs() << " Could not open the Field information file \n";
     }
     else
     {

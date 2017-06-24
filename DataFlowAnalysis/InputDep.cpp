@@ -5,9 +5,10 @@ STATISTIC(NumInputValues, "The number of input values");
 STATISTIC(NumStores, "The number of store instructions in the program.");
 STATISTIC(UniqueStores,"Number of stores to unique mem Location");
 
-#define debug false
+#define debug true
 #define defaultInput false
 #define globalStrings true
+#define fdb false
 
 //Command prompt options:
 cl::opt<std::string> SourceFile("taintSource", cl::desc("<Taint Source file>"), cl::init("-"));
@@ -114,6 +115,8 @@ bool InputDep::runOnModule(Module &M) {
     ReadSinkInput();
     ReadQueryInput();
     ReadConfigFile();
+    ReadExtTaintInput();
+    AddExtTaint(M);
     //ReadRelevantFields();
 
     errs()<<"\nRead queries: ";
@@ -979,6 +982,15 @@ void InputDep::printer() {
     errs() << "\n\n===Input dependant values:====\n";
     for (std::set<Value*>::iterator i = inputDepValues.begin(), e =
          inputDepValues.end(); i != e; ++i) {
+        if(fdb){
+        Instruction* inst = dyn_cast<Instruction>(*i);
+        if(inst)
+        {Function *F = inst->getParent()->getParent();
+            if(F)
+                errs()<<"\n Function : "<<F->getName();
+        }
+        }
+
         errs() << **i << "\n";
     }
     errs() << "=============Target Functions==============\n";

@@ -9,6 +9,7 @@ STATISTIC(NumberofBlocks,"The total number of blocks in the code");
 
 
 #define debug true
+#define fdb false
 
 //Command line Prompt.
 static cl::opt<llvm::cl::boolOrDefault>
@@ -20,6 +21,7 @@ Input(
 
 static cl::opt<bool, false> printall("printall", cl::desc("Prints all query data"), cl::NotHidden);
 static cl::opt<bool, false> printcond("printcond", cl::desc("Prints only conditionals"), cl::NotHidden);
+cl::opt<std::string> mediatorFile2("mediator2", cl::desc("<Mediator Source file for chops>"), cl::init("-"));
 
 
 
@@ -81,6 +83,16 @@ bool TaintFlow::runOnModule(Module &M) {
         Value* currentTaintVal = *tv;
         std::string appendVal = ValLabelmap[currentTaintVal];
         inputDepValuespart.insert(currentTaintVal);
+        if(fdb)
+        {
+            Instruction* inst = dyn_cast<Instruction>(currentTaintVal);
+            if(inst)
+            {Function *F = inst->getParent()->getParent();
+                if(F)
+                    errs()<<"\n Function : "<<F->getName();
+            }
+        }
+
         errs()<<"\n\nInputDep Values for "<<*currentTaintVal;
         tainted =  depGraph->getDepValues(inputDepValuespart);
 
@@ -438,7 +450,7 @@ bool TaintFlow::runOnModule(Module &M) {
     fin.open(mediator_file);
     if (!fin.good())
     {
-        errs() << "\nMediator File not found...?\n";
+        errs() << "\nMediator File not found...?\n"<<mediator_file;
         return false;
     }
 
