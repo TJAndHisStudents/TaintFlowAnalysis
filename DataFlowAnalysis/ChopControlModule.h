@@ -32,6 +32,7 @@ class ChopControlModule : public ModulePass {
   //Get values for intramediator analysis
   std::vector<Value*> getArgVars(Function &F);
   Value* getReturnVar(Function &F);
+	std::vector<Instruction*> getMedCallRetVar(Module &M, Function &F);
 
   //Get values for before mediator analysis
   int getParamVars(Function *caller, Function *callee);
@@ -39,6 +40,8 @@ class ChopControlModule : public ModulePass {
 
   int runQueries(std::list<Instruction*> inst_list); 
   std::list<Instruction*> test_function(Function &F, Graph *depGraph);
+	std::list<Instruction*> identify_instructions(Function &F, Graph *depGraph);
+	int analyzeChops(std::list<string> inst_list);
   //Get values for after mediator analysis
   int getCallSiteReturnVar();
   int getSinkVar();
