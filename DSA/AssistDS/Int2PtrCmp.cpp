@@ -45,7 +45,8 @@ using namespace PatternMatch;
 //  false - The module was not modified.
 //
 bool Int2PtrCmp::runOnModule(Module& M) {
-  TD = &getAnalysis<DataLayoutPass>().getDataLayout();
+  //TD = &getAnalysis<DataLayout>();
+    TD= &M.getDataLayout();
   for (Module::iterator F = M.begin(); F != M.end(); ++F) {
     for (Function::iterator B = F->begin(), FE = F->end(); B != FE; ++B) {      
       for (BasicBlock::iterator I = B->begin(), BE = B->end(); I != BE;) {

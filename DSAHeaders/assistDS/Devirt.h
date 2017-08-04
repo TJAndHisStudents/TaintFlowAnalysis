@@ -63,7 +63,7 @@ namespace llvm {
 
       virtual void getAnalysisUsage(AnalysisUsage &AU) const {
         AU.addRequired<dsa::CallTargetFinder<EQTDDataStructures> >();
-        AU.addRequired<DataLayoutPass>();
+       // AU.addRequired<DataLayoutPass>();
       }
 
       // Visitor methods for analyzing instructions

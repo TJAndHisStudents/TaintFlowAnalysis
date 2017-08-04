@@ -32,7 +32,7 @@ namespace llvm {
     Int2PtrCmp() : ModulePass(ID) {}
     virtual bool runOnModule(Module& M);
     virtual void getAnalysisUsage(AnalysisUsage &AU) const {
-      AU.addRequired<DataLayoutPass>();
+     // AU.addRequired<DataLayoutPass>();
     }
 
   };

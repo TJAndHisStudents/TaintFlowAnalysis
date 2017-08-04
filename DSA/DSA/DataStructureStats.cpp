@@ -81,7 +81,7 @@ namespace {
     void getAnalysisUsage(AnalysisUsage &AU) const {
       AU.setPreservesAll();
       AU.addRequired<TDDataStructures>();
-      AU.addRequired<DataLayoutPass>();
+     // AU.addRequired<DataLayout>();
       AU.addRequired<dsa::TypeSafety<TDDataStructures> >();
     }
 
@@ -237,7 +237,9 @@ void DSGraphStats::visitStore(StoreInst &SI) {
 
 bool DSGraphStats::runOnFunction(Function& F) {
   DS = &getAnalysis<TDDataStructures>();
-  TD = &getAnalysis<DataLayoutPass>().getDataLayout();
+ // TD = &getAnalysis<DataLayout>();
+  Module *M = F.getParent();
+  TD = &M->getDataLayout();
   TS = &getAnalysis<dsa::TypeSafety<TDDataStructures> >();
   TDGraph = DS->getDSGraph(F);
   countCallees(F);

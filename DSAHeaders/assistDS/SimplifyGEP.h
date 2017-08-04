@@ -28,7 +28,7 @@ namespace llvm {
     SimplifyGEP() : ModulePass(ID) {}
     virtual bool runOnModule(Module& M);
     virtual void getAnalysisUsage(AnalysisUsage &AU) const {
-      AU.addRequired<DataLayoutPass>();
+      //AU.addRequired<DataLayoutPass>();
     }
   };
 }

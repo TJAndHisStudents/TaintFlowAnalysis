@@ -131,14 +131,14 @@ void CallTargetFinder<dsa>::findIndTargets(Module &M)
 
   //Print the indirect call Map:
 
-for(std::map<CallSite, std::vector<const Function*> >::iterator indMapIt = IndMap.begin(); indMapIt != IndMap.end(); ++indMapIt )
-{
+//for(std::map<CallSite, std::vector<const Function*> >::iterator indMapIt = IndMap.begin(); indMapIt != IndMap.end(); ++indMapIt )
+//{
 
-   CallSite CS =  indMapIt->first;
-   Instruction* Inst = CS.getInstruction();
-   Inst->dump();
+//   CallSite CS =  indMapIt->first;
+//   Instruction* Inst = CS.getInstruction();
+//   Inst->dump();
 
-}
+//}
 
 
 }
@@ -169,6 +169,13 @@ void CallTargetFinder<dsa>::print(llvm::raw_ostream &O, const Module *M) const
       }
       O << "\n";
   }
+}
+
+
+template<class dsa>
+std::map<CallSite, std::vector<const Function*> > CallTargetFinder<dsa>::getTargets() const
+{
+    return IndMap;
 }
 
   template<class dsa>

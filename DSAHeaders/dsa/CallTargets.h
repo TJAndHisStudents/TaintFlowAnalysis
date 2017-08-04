@@ -28,13 +28,14 @@ namespace dsa{
 
   template<class dsa>
   class CallTargetFinder : public ModulePass {
-    std::map<CallSite, std::vector<const Function*> > IndMap;
+
     std::set<CallSite> CompleteSites;
     std::list<CallSite> AllSites;
 
     void findIndTargets(Module &M);
   public:
     static char ID;
+     std::map<CallSite, std::vector<const Function*> > IndMap;
     CallTargetFinder() : ModulePass(ID) {}
 
     virtual bool runOnModule(Module &M);
@@ -42,6 +43,8 @@ namespace dsa{
     virtual void getAnalysisUsage(AnalysisUsage &AU) const;
 
     virtual void print(llvm::raw_ostream &O, const Module *M) const;
+
+     virtual std::map<CallSite, std::vector<const Function*> > getTargets() const;
 
     // Given a CallSite, get an iterator of callees
     std::vector<const Function*>::iterator begin(CallSite cs){
