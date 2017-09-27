@@ -43,17 +43,17 @@ The granularity of the graph nodes is also demand based and can be field sensiti
 
 If mediators are specified in the mediator input file, our mediator tampering analysis analyzes each specified mediator for data tampering. This is achieved by computing program chops (the intersection of a forward taint and a reverse taint between two program dependence nodes). Program chops describe the relationship between two entities. We generate 3 types of program chops, pre-, intra-, and post-mediator chops in order to understand the relationship between:
 
-*Program inputs and mediator inputs
-*Mediator inputs and mediator outputs (decisions)
-*Mediator outputs and control logic that governs access to a sensitive sink
+* Program inputs and mediator inputs
+* Mediator inputs and mediator outputs (decisions)
+* Mediator outputs and control logic that governs access to a sensitive sink
 
 Once these program chops are captured for each mediator, they are analyzed for possible risky operations. This includes write operations where data is explicitly modified or overwritten, string manipulation operations, memory modification operations, and bitwise manipulation operations. Given a new set of risky operations the analysis performs a reverse tainting to identify all possible sources of modification. Depending on certain characteristics of the risky operations they are scored to generate a priority of which operations should be analyzed first. Although the constraints used to score operations is subject to change and many are still being tested for effectiveness the current running list is as follows:
 
-*Is the data being modified directly tainted by sensitive input
-*Is the data being modified used in sensitive library calls
-*Is the data being modified by hard-coded constant data (integer or possible string)
-*Is the operation governed by control logic that dictates access to it, are there other modification operations that lie on other branches, or before the control logic
-*Does the data being modified contain any sources that are explicitly different from all other local risky operations
+* Is the data being modified directly tainted by sensitive input
+* Is the data being modified used in sensitive library calls
+* Is the data being modified by hard-coded constant data (integer or possible string)
+* Is the operation governed by control logic that dictates access to it, are there other modification operations that lie on other branches, or before the control logic
+* Does the data being modified contain any sources that are explicitly different from all other local risky operations
 
 The output is generated as a directory for each type of program chop, for each mediator. Within contains a separate directory for each chop generated for that given mediator and chop type. Within that contains all information for that chop, including forward and reverse taint output graphs used to generate each chop, the chop output in graph format, and a directory for each write operation. Within each write operation directory contains a reverse taint graph and file outputting information regarding the constraints that were satisfied.
 
